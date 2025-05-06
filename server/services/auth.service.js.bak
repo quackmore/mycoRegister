@@ -1,0 +1,135 @@
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+const { hashPassword, verifyPassword } = require('../utils/password.utils');
+const { generateToken } = require('../utils/jwt.utils');
+
+// This would be replaced with your actual database models
+const userModel = {
+    findByEmail: async (email) => {
+        // Mock function for demonstration
+        // In a real app, this would query your database
+        if (email === 'user@example.com') {
+            return {
+                id: '12345',
+                email: 'user@example.com',
+                username: 'testuser',
+                password: await hashPassword('password123'),
+                createdAt: new Date()
+            };
+        }
+        return null;
+    },
+    findById: async (id) => {
+        // Mock function for demonstration
+        if (id === '12345') {
+            return {
+                id: '12345',
+                email: 'user@example.com',
+                username: 'testuser',
+                password: await hashPassword('password123'),
+                createdAt: new Date()
+            };
+        }
+        return null;
+    }
+};
+
+// Store for refresh tokens (in a real app, this would be in a database)
+const refreshTokens = new Set();
+
+/**
+ * Service for user login
+ * @param {string} email - User email
+ * @param {string} password - User password
+ * @returns {Object} - User data and tokens
+ */
+const loginUser = async (email, password) => {
+    const user = await userModel.findByEmail(email);
+
+    if (!user) {
+        throw new Error('Invalid email or password');
+    }
+
+    const isPasswordValid = await verifyPassword(password, user.password);
+
+    if (!isPasswordValid) {
+        throw new Error('Invalid email or password');
+    }
+
+    // Generate tokens
+    const token = generateToken({ id: user.id, email: user.email }, config.jwt.expiresIn);
+    const refreshToken = generateToken({ id: user.id }, config.jwt.refreshExpiresIn);
+
+    // Store refresh token
+    refreshTokens.add(refreshToken);
+
+    return {
+        user,
+        token,
+        refreshToken
+    };
+};
+
+/**
+ * Service for refreshing tokens
+ * @param {string} refreshToken - Refresh token
+ * @returns {Object} - New access token
+ */
+const refreshToken = async (refreshToken) => {
+    if (!refreshTokens.has(refreshToken)) {
+        throw new Error('Invalid refresh token');
+    }
+
+    try {
+        // Verify the refresh token
+        const decoded = jwt.verify(refreshToken, config.jwt.secret);
+
+        // Get user from database
+        const user = await userModel.findById(decoded.id);
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Generate a new access token
+        const token = generateToken({ id: user.id, email: user.email }, config.jwt.expiresIn);
+
+        return { token };
+    } catch (error) {
+        // Remove invalid refresh token
+        refreshTokens.delete(refreshToken);
+        throw new Error('Invalid refresh token');
+    }
+};
+
+/**
+ * Service for user logout
+ * @param {string} userId - User ID
+ */
+const logoutUser = async (userId) => {
+    // In a real app, you would invalidate tokens for this user in the database
+    // For this example, we don't have a way to identify which tokens belong to the user
+    return true;
+};
+
+/**
+ * Service to get user by ID
+ * @param {string} userId - User ID
+ * @returns {Object} - User data
+ */
+const getUserById = async (userId) => {
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+        throw new Error('User not found');
+    }
+
+    return user;
+};
+
+module.exports = {
+    loginUser,
+    refreshToken,
+    logoutUser,
+    getUserById
+};
