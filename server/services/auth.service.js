@@ -36,7 +36,9 @@ const loginUser = async (username, password) => {
     return {
         username,
         token,
-        refreshToken
+        refreshToken,
+        expiresIn: config.jwt.expiresIn,
+        refreshExpiresIn: config.jwt.refreshExpiresIn
     };
 };
 
@@ -61,7 +63,7 @@ const refreshToken = async (refreshToken) => {
         // Generate a new access token
         const token = generateToken({ sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.expiresIn);
 
-        return { token };
+        return { token, expiresIn: config.jwt.expiresIn };
     } catch (error) {
         // Remove invalid refresh token
         refreshTokenStored = null;

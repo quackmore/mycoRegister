@@ -1,18 +1,19 @@
-// auth.js - Authentication service for managing user sessions
+// auth.service.js - Service for handling authentication
 
 class AuthService {
     constructor() {
-        // State
-        this.authenticated = false;
-        this.username = null;
-        this._couchdb = null;
-        this.sub = null;
-        this.exp = null;
+        this.API_BASE_URL = '/api/auth';
+        this.tokenKey = 'app_auth_token';
+        this.refreshTokenKey = 'app_refresh_token';
+        this.tokenExpiryKey = 'app_token_expiry';
+        this.eventListeners = {};
+
+        // Auto-refresh token setup
+        this.refreshInterval = null;
+        this.tokenRefreshThreshold = 60000; // 1 minute before expiry
 
         // Event handling
         this.eventTarget = new EventTarget();
-
-        this.refreshTimer = null;
 
         // Initialize
         this.init();
@@ -20,7 +21,7 @@ class AuthService {
 
     init() {
         // Check authentication status on load
-        this.checkAuthStatus();
+        this.checkTokenOnInit();
 
         // Set up event listeners for auth-related UI elements
         document.addEventListener('DOMContentLoaded', () => {
@@ -52,137 +53,294 @@ class AuthService {
         this.eventTarget.dispatchEvent(event);
     }
 
-    // Get CSRF token from cookie
-    getCsrfToken() {
-        // Try to get from non-HttpOnly cookie
-        const cookieValue = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('csrf_token_exposed='))
-            ?.split('=')[1];
-      
-        if (cookieValue) {
-            return cookieValue;
-        }
-      
-        // If no cookie found, fetch from API endpoint
-        return this.fetchCsrfToken();
-    }
-    
-    // Fetch CSRF token from API endpoint if needed
-    async fetchCsrfToken() {
+
+    /**
+     * Token management - using secure storage when available
+     */
+    storeTokens(token, refreshToken, expiresIn) {
+        // Calculate expiry time
+        const expiryTime = Date.now() + (expiresIn * 1000);
+
         try {
-            const response = await fetch('/api/csrf-token');
-            const data = await response.json();
-            return data.csrfToken;
-        } catch (error) {
-            console.error('Failed to fetch CSRF token:', error);
-            return null;
-        }
-    }
-
-    // Check if user is already authenticated
-    async checkAuthStatus() {
-        try {
-            // Try to get auth status from server
-            const response = await fetch('/api/auth/verify', {
-                method: 'GET',
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                // User is authenticated
-                const data = await response.json();
-                this.authenticated = true;
-                this.username = data.username;
-                this._couchdb = data._couchdb;
-                this.sub = data.sub;
-                this.exp = data.exp;
-
-                // Dispatch authentication event
-                this.dispatchEvent('auth:authenticated', { 
-                    username: data.username,
-                    _couchdb: data._couchdb,
-                    sub: data.sub,
-                    exp: data.exp
-                });
-                
-                // Schedule token refresh (access token expires in 30m as per server config)
-                this.scheduleTokenRefresh();
-                return true;
-            } else if (response.status === 401) {
-                // Try to refresh token if unauthorized
-                const refreshed = await this.refreshAccessToken();
-                if (refreshed) {
-                    // Retry verify after refresh
-                    return this.checkAuthStatus();
-                } else {
-                    this.resetAuthState();
-                    this.dispatchEvent('auth:unauthenticated');
-                    return false;
-                }
+            // Try to use secure storage if available
+            if (this._isSecureStorageAvailable()) {
+                // Store in secure context
+                this._secureStore(this.tokenKey, token);
+                this._secureStore(this.refreshTokenKey, refreshToken);
+                this._secureStore(this.tokenExpiryKey, expiryTime.toString());
             } else {
-                this.resetAuthState();
-                this.dispatchEvent('auth:unauthenticated');
-                return false;
+                // Fallback to encrypted localStorage
+                this._encryptAndStore(this.tokenKey, token);
+                this._encryptAndStore(this.refreshTokenKey, refreshToken);
+                localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
             }
+
+            // Setup auto refresh
+            this.setupTokenRefresh(expiryTime);
+
+            return true;
         } catch (error) {
-            console.error('Auth check failed:', error);
-
-            // If offline, try to use stored credentials
-            if (!navigator.onLine) {
-                const hasStoredAuth = this.checkStoredAuthStatus();
-                if (hasStoredAuth) {
-                    this.dispatchEvent('auth:offline-authenticated');
-                    return true;
-                }
-            }
-
-            this.resetAuthState();
-            this.dispatchEvent('auth:error', { error });
+            console.error('Failed to store auth tokens:', error);
             return false;
         }
     }
 
-    // Schedule token refresh before expiry (5 minutes before the 30-minute expiry)
-    scheduleTokenRefresh() {
-        // Clear any existing timer
-        if (this.refreshTimer) clearTimeout(this.refreshTimer);
-        
-        // Access tokens last 30 minutes; refresh 5 minutes before expiry
-        const refreshInterval = 25 * 60 * 1000; // 25 minutes
-        this.refreshTimer = setTimeout(() => {
-            this.refreshAccessToken();
-        }, refreshInterval);
-    }
-
-    // Refresh access token using /refresh endpoint
-    async refreshAccessToken() {
+    getToken() {
         try {
-            // Get CSRF token for the refresh request
-            const csrfToken = await this.getCsrfToken();
-            
-            const response = await fetch('/api/auth/refresh', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            });
-            
-            if (response.ok) {
-                this.dispatchEvent('auth:token-refreshed');
-                // Schedule next refresh
-                this.scheduleTokenRefresh();
-                return true;
+            if (this._isSecureStorageAvailable()) {
+                return this._secureRetrieve(this.tokenKey);
             } else {
-                this.resetAuthState();
-                this.dispatchEvent('auth:session-expired');
-                return false;
+                return this._retrieveAndDecrypt(this.tokenKey);
             }
         } catch (error) {
-            console.error('Token refresh failed:', error);
-            this.resetAuthState();
-            this.dispatchEvent('auth:error', { error });
+            console.error('Failed to retrieve auth token:', error);
+            return null;
+        }
+    }
+
+    getRefreshToken() {
+        try {
+            if (this._isSecureStorageAvailable()) {
+                return this._secureRetrieve(this.refreshTokenKey);
+            } else {
+                return this._retrieveAndDecrypt(this.refreshTokenKey);
+            }
+        } catch (error) {
+            console.error('Failed to retrieve refresh token:', error);
+            return null;
+        }
+    }
+
+    getTokenExpiry() {
+        try {
+            let expiryStr;
+            if (this._isSecureStorageAvailable()) {
+                expiryStr = this._secureRetrieve(this.tokenExpiryKey);
+            } else {
+                expiryStr = localStorage.getItem(this.tokenExpiryKey);
+            }
+            return expiryStr ? parseInt(expiryStr) : null;
+        } catch (error) {
+            console.error('Failed to retrieve token expiry:', error);
+            return null;
+        }
+    }
+
+    clearTokens() {
+        try {
+            if (this._isSecureStorageAvailable()) {
+                sessionStorage.removeItem(this.tokenKey);
+                sessionStorage.removeItem(this.refreshTokenKey);
+                sessionStorage.removeItem(this.tokenExpiryKey);
+            } else {
+                localStorage.removeItem(this.tokenKey);
+                localStorage.removeItem(this.refreshTokenKey);
+                localStorage.removeItem(this.tokenExpiryKey);
+            }
+
+            // Clear refresh interval
+            if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+                this.refreshInterval = null;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Failed to clear auth tokens:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Helper methods for secure storage
+     */
+    _isSecureStorageAvailable() {
+        // Modern browsers with secure context
+        return window.isSecureContext;
+    }
+
+    _secureStore(key, value) {
+        // In secure context, sessionStorage is preferred over localStorage
+        // as it's cleared when the session ends
+        sessionStorage.setItem(key, value);
+    }
+
+    _secureRetrieve(key) {
+        return sessionStorage.getItem(key);
+    }
+
+    // Simple encryption for localStorage (not truly secure but better than plaintext)
+    _encryptAndStore(key, value) {
+        if (!value) return;
+
+        // Simple XOR encryption with a dynamic key derived from the user's browser fingerprint
+        // Note: This is not cryptographically secure, just adds a layer of obscurity
+        const browserKey = this._getBrowserFingerprint();
+        const encrypted = this._xorEncrypt(value, browserKey);
+        localStorage.setItem(key, encrypted);
+    }
+
+    _retrieveAndDecrypt(key) {
+        const encrypted = localStorage.getItem(key);
+        if (!encrypted) return null;
+
+        const browserKey = this._getBrowserFingerprint();
+        return this._xorEncrypt(encrypted, browserKey); // XOR is symmetric
+    }
+
+    _getBrowserFingerprint() {
+        // Create a simple fingerprint based on available browser information
+        const fingerprint = [
+            navigator.userAgent,
+            navigator.language,
+            window.screen.colorDepth,
+            window.screen.width + 'x' + window.screen.height
+        ].join('|');
+
+        // Simple hash function
+        let hash = 0;
+        for (let i = 0; i < fingerprint.length; i++) {
+            const char = fingerprint.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return hash.toString(16); // Convert to hex string
+    }
+
+    _xorEncrypt(str, key) {
+        // Simple XOR encryption
+        let result = '';
+        const keyChars = key.toString();
+
+        for (let i = 0; i < str.length; i++) {
+            const keyChar = keyChars[i % keyChars.length].charCodeAt(0);
+            const charCode = str.charCodeAt(i) ^ keyChar;
+            result += String.fromCharCode(charCode);
+        }
+
+        // Convert to base64 for storage
+        return btoa(result);
+    }
+
+    /**
+     * Authentication state checking
+     */
+    isAuthenticated() {
+        const token = this.getToken();
+        const expiry = this.getTokenExpiry();
+
+        // Check if we have both token and expiry time
+        if (!token || !expiry) {
+            return false;
+        }
+
+        // Check if token is expired
+        if (Date.now() >= expiry) {
+            // Token expired, try to refresh
+            this.refreshTokenSilently();
+            return false;
+        }
+
+        return true;
+    }
+
+    checkTokenOnInit() {
+        // Check if we have a valid token on initialization
+        if (this.isAuthenticated()) {
+            this.dispatchEvent('auth:authenticated');
+
+            // Setup token refresh if needed
+            const expiry = this.getTokenExpiry();
+            if (expiry) {
+                this.setupTokenRefresh(expiry);
+            }
+        } else {
+            // We either have no token or it's expired
+            const refreshToken = this.getRefreshToken();
+            if (refreshToken) {
+                // Try to refresh the token
+                this.refreshTokenSilently();
+            } else {
+                this.dispatchEvent('auth:unauthenticated');
+            }
+        }
+    }
+
+    /**
+     * Token refresh functionality
+     */
+    setupTokenRefresh(expiryTime) {
+        // Clear any existing interval
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+
+        // Calculate time until we should refresh (threshold before expiry)
+        const now = Date.now();
+        const timeUntilRefresh = expiryTime - now - this.tokenRefreshThreshold;
+
+        if (timeUntilRefresh <= 0) {
+            // Already past or very close to threshold, refresh now
+            this.refreshTokenSilently();
+            return;
+        }
+
+        // Set timeout to refresh just before expiry
+        setTimeout(() => {
+            this.refreshTokenSilently();
+        }, timeUntilRefresh);
+    }
+
+    async refreshTokenSilently() {
+        try {
+            const refreshToken = this.getRefreshToken();
+            if (!refreshToken) {
+                throw new Error('No refresh token available');
+            }
+
+            const response = await fetch(`${this.API_BASE_URL}/refresh-token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            if (!response.ok) {
+                throw new Error('Token refresh failed');
+            }
+
+            const responseData = await response.json();
+
+            // Check for proper response structure
+            if (!responseData.data || !responseData.data.token || !responseData.data.expiresIn) {
+                throw new Error('Invalid response format from server');
+            }
+
+            const { token, expiresIn } = responseData.data;
+
+            // Store new tokens
+            this.storeTokens(token, refreshToken, expiresIn);
+
+            // Notify that we've successfully refreshed
+            this.dispatchEvent('auth:token-refreshed', {
+                token: token,
+                expiresIn: expiresIn
+            });
+
+            // Ensure system knows we're authenticated
+            this.dispatchEvent('auth:authenticated');
+
+            return true;
+        } catch (error) {
+            console.error('Silent token refresh failed:', error);
+
+            // Clear tokens as they're now invalid
+            this.clearTokens();
+
+            // Notify system we're no longer authenticated
+            this.dispatchEvent('auth:unauthenticated');
+
             return false;
         }
     }
@@ -202,77 +360,41 @@ class AuthService {
             // Check if online first
             if (navigator.onLine) {
                 // Get CSRF token for the login request
-                const csrfToken = await this.getCsrfToken();
-                
-                // Online login
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch(`${this.API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ username, password }),
-                    credentials: 'include'
+                    body: JSON.stringify({ username, password })
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-
-                    // Store auth status for offline use
-                    this.storeAuthStatus(username);
-                    // Store credentials hash for offline auth
-                    await this.storeOfflineCredentials(username, password);
-
-                    // Verify authentication to get user details
-                    const verifyResponse = await fetch('/api/auth/verify', {
-                        method: 'GET'
-                    });
-
-                    if (verifyResponse.ok) {
-                        const userData = await verifyResponse.json();
-                        // Update state
-                        this.authenticated = true;
-                        this.username = userData.username;
-                        this._couchdb = userData._couchdb;
-                        this.sub = userData.sub;
-                        this.exp = userData.exp;
-
-                        // Dispatch event with complete user data
-                        this.dispatchEvent('auth:login-success', { 
-                            username: userData.username,
-                            _couchdb: userData._couchdb,
-                            sub: userData.sub,
-                            exp: userData.exp
-                        });
-
-                        // Schedule token refresh
-                        this.scheduleTokenRefresh();
-                    } else {
-                        // Still dispatch login success but with limited data
-                        this.authenticated = true;
-                        this.username = username;
-                        this.dispatchEvent('auth:login-success', { username });
-                        this.scheduleTokenRefresh();
-                    }
-
-                    return true;
-                } else {
-                    let error = { error: 'Login failed' };
-                    try {
-                        error = await response.json();
-                    } catch (e) {
-                        // If response is not JSON
-                    }
-                    
-                    this.resetAuthState();
-
-                    if (loginError) {
-                        loginError.textContent = error.error || 'Login failed';
-                    }
-
-                    this.dispatchEvent('auth:login-failed', { error: error.error });
-                    return false;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Login failed');
                 }
+
+                const responseData = await response.json();
+
+                // Check for proper response structure
+                if (!responseData.data || !responseData.data.token || !responseData.data.refreshToken || !responseData.data.expiresIn) {
+                    throw new Error('Invalid response format from server');
+                }
+
+                const { token, refreshToken, expiresIn } = responseData.data;
+                const userData = responseData.data.user;
+
+                // Store the tokens
+                this.storeTokens(token, refreshToken, expiresIn);
+
+                // Dispatch login success event
+                this.dispatchEvent('auth:login-success', {
+                    user: userData
+                });
+
+                // Also dispatch general authenticated event
+                this.dispatchEvent('auth:authenticated');
+
+                return true;
             } else {
                 // Offline login attempt
                 const offlineAuthSuccess = await this.handleOfflineAuthentication(username, password);
@@ -304,22 +426,28 @@ class AuthService {
     // Handle logout
     async handleLogout() {
         try {
-            // Get CSRF token for the logout request
-            const csrfToken = await this.getCsrfToken();
-            
-            // Call logout endpoint
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            });
+            // Get current token for authorization header
+            const token = this.getToken();
 
-            this.resetAuthState();
-            this.clearStoredAuth();
+            if (token) {
+                // Call logout API to invalidate the token on server
+                await fetch(`${this.API_BASE_URL}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
 
+            // Clear tokens regardless of API call success
+            this.clearTokens();
+
+            // Dispatch logout event
             this.dispatchEvent('auth:logout');
+
+            // Also dispatch general unauthenticated event
+            this.dispatchEvent('auth:unauthenticated');
 
             return true;
         } catch (error) {
@@ -328,8 +456,7 @@ class AuthService {
 
             // If offline, still clear local auth state
             if (!navigator.onLine) {
-                this.resetAuthState();
-                this.clearStoredAuth();
+                this.clearTokens();
                 this.dispatchEvent('auth:logout');
                 return true;
             }
@@ -338,147 +465,67 @@ class AuthService {
         }
     }
 
-    // Check if stored credentials exist for offline login
-    checkStoredAuthStatus() {
-        const storedAuth = localStorage.getItem('auth_status');
-        if (storedAuth) {
-            try {
-                const authData = JSON.parse(storedAuth);
-                this.authenticated = true;
-                this.username = authData.username;
-                this._couchdb = authData._couchdb || null;
-                this.sub = authData.sub || null;
-                this.exp = authData.exp || null;
-                return true;
-            } catch (e) {
-                console.error('Failed to parse stored auth data:', e);
-                return false;
-            }
-        }
-        return false;
-    }
-
     // Handle offline authentication
     async handleOfflineAuthentication(username, password) {
         try {
-            const storedCredHash = localStorage.getItem('auth_cred_hash');
-
-            if (!storedCredHash) {
-                return false; // No stored credentials
-            }
-
-            // Create a simple hash of the credentials
-            const inputHash = await this.simpleHash(`${username}:${password}`);
-
-            // Compare hashes
-            if (inputHash === storedCredHash) {
-                // Offline authentication successful
-                this.authenticated = true;
-                this.username = username;
-                
-                // Try to load additional user data if available
-                const storedAuth = localStorage.getItem('auth_status');
-                if (storedAuth) {
-                    try {
-                        const authData = JSON.parse(storedAuth);
-                        this._couchdb = authData._couchdb || null;
-                        this.sub = authData.sub || null;
-                        this.exp = authData.exp || null;
-                    } catch (e) {
-                        console.error('Failed to parse stored auth data:', e);
-                    }
-                }
-                
-                return true;
-            }
-
-            return false;
+            // TODO: Implement offline authentication logic
         } catch (error) {
             console.error('Offline authentication error:', error);
             return false;
         }
     }
 
-    // Store authentication status for offline use
-    storeAuthStatus(username) {
-        localStorage.setItem('auth_status', JSON.stringify({
-            username,
-            _couchdb: this._couchdb,
-            sub: this.sub,
-            exp: this.exp
-        }));
-    }
-
-    // Store authentication credentials for offline use
-    async storeOfflineCredentials(username, password) {
+    async getCurrentUser() {
         try {
-            // Create a simple hash of the credentials
-            const credHash = await this.simpleHash(`${username}:${password}`);
+            const token = this.getToken();
 
-            // Store the hash
-            localStorage.setItem('auth_cred_hash', credHash);
+            if (!token) {
+                throw new Error('Not authenticated');
+            }
+
+            const response = await fetch(`${this.API_BASE_URL}/me`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get user data');
+            }
+
+            const userData = await response.json();
+            return userData;
         } catch (error) {
-            console.error('Failed to store offline credentials:', error);
+            console.error('Error fetching current user:', error);
+
+            // If unauthorized, clear tokens and update state
+            if (error.message === 'Not authenticated' ||
+                error.message === 'Failed to get user data') {
+                this.clearTokens();
+                this.dispatchEvent('auth:unauthenticated');
+            }
+
+            return null;
         }
     }
 
-    // Reset authentication state
-    resetAuthState() {
-        this.authenticated = false;
-        this.username = null;
-        this._couchdb = null;
-        this.sub = null;
-        this.exp = null;
-        
-        // Clear refresh timer
-        if (this.refreshTimer) {
-            clearTimeout(this.refreshTimer);
-            this.refreshTimer = null;
-        }
+    /**
+     * Helper to get auth header for external API calls
+     */
+    getAuthHeader() {
+        const token = this.getToken();
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
-    // Clear stored authentication data
-    clearStoredAuth() {
-        localStorage.removeItem('auth_status');
-        // Optionally, you might want to keep the credential hash for future offline logins
-        // localStorage.removeItem('auth_cred_hash');
-    }
-
-    // Get current authentication status
-    isAuthenticated() {
-        return this.authenticated;
-    }
-
-    // Get current username
-    getCurrentUsername() {
-        return this.username;
-    }
-    
-    // Get user _couchdb
-    getUser_couchdb() {
-        return this._couchdb;
-    }
-    
-    // Get CouchDB user ID
-    getsub() {
-        return this.sub;
-    }
-
-    // Simple hash function - replace with proper crypto in production
-    async simpleHash(str) {
-        // This is a very basic hash function for example purposes only
-        // In a real app, use SubtleCrypto API or a proper crypto library
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-        }
-        return hash.toString(16);
+    /**
+     * For PouchDB/CouchDB integration
+     */
+    getPouchDbAuthHeaders() {
+        const token = this.getToken();
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 }
 
-// Create and export singleton instance
+// Create singleton instance
 const authService = new AuthService();
-window.authService = authService;
 export default authService;

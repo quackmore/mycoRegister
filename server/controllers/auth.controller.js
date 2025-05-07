@@ -1,6 +1,7 @@
 const { console } = require('inspector');
 const authService = require('../services/auth.service');
 const { successResponse, errorResponse } = require('../utils/response.utils');
+const { expiresIn } = require('../config/jwt');
 
 /**
  * Controller for user login
@@ -22,7 +23,9 @@ const login = async (req, res) => {
         return successResponse(res, 200, 'Login successful', {
             user: username,
             token: result.token,
-            refreshToken: result.refreshToken
+            refreshToken: result.refreshToken,
+            expiresIn: expiresIn,
+            refreshExpiresIn: result.refreshExpiresIn
         });
     } catch (error) {
         if (error.message === 'Invalid username or password') {
@@ -48,7 +51,8 @@ const refreshToken = async (req, res) => {
         const result = await authService.refreshToken(refreshToken);
 
         return successResponse(res, 200, 'Token refreshed successfully', {
-            token: result.token
+            token: result.token,
+            expiresIn: result.expiresIn
         });
     } catch (error) {
         if (error.message === 'Invalid refresh token') {
