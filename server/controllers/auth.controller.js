@@ -9,23 +9,23 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
  */
 const login = async (req, res) => {
     try {
-        const { user, password } = req.body;
+        const { username, password } = req.body;
 
         // Validate required fields
-        if (!user || !password) {
-            return errorResponse(res, 400, 'User and password are required');
+        if (!username || !password) {
+            return errorResponse(res, 400, 'Username and password are required');
         }
 
-        const result = await authService.loginUser(user, password);
+        const result = await authService.loginUser(username, password);
         console.log(result);
 
         return successResponse(res, 200, 'Login successful', {
-            user: user,
+            user: username,
             token: result.token,
             refreshToken: result.refreshToken
         });
     } catch (error) {
-        if (error.message === 'Invalid user or password') {
+        if (error.message === 'Invalid username or password') {
             return errorResponse(res, 401, error.message);
         }
         return errorResponse(res, 500, error.message);

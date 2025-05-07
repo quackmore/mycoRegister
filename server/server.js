@@ -3,6 +3,7 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const compression = require('compression');
+const morgan = require('morgan');
 const config = require('./config');
 const { errorMiddleware } = require('./middleware');
 const routes = require('./routes');
@@ -13,6 +14,9 @@ const PORT = process.env.PORT || 3000;
 
 // Apply security middleware
 app.use(helmet());
+
+// Logging middleware early to capture all requests
+app.use(morgan('dev'));
 
 // Parse JSON bodies
 app.use(express.json());

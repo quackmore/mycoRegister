@@ -13,28 +13,28 @@ var refreshTokenStored = null;
 
 /**
  * Service for user login
- * @param {string} user - User user
+ * @param {string} username - User name
  * @param {string} password - User password
  * @returns {Object} - User data and tokens
  */
-const loginUser = async (user, password) => {
+const loginUser = async (username, password) => {
 
-    if (!user || !password) {
+    if (!username || !password) {
         throw new Error('Invalid user or password');
     }
 
     const isPasswordValid = await bcrypt.compare(password, PASSWORD_HASH);
 
-    if (user !== USER_NAME || !isPasswordValid) {
-        throw new Error('Invalid user or password');
+    if (username !== USER_NAME || !isPasswordValid) {
+        throw new Error('Invalid username or password');
     }
 
     // Generate tokens
     const token = generateToken({ sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.expiresIn);
-    const refreshToken = generateToken({ user: user }, config.jwt.refreshExpiresIn);
+    const refreshToken = generateToken({ user: username }, config.jwt.refreshExpiresIn);
     refreshTokenStored = refreshToken;
     return {
-        user,
+        username,
         token,
         refreshToken
     };
