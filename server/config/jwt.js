@@ -1,3 +1,4 @@
+require('dotenv').config();
 /**
  * JWT configuration
  */
@@ -6,10 +7,10 @@ const config = {
     secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
 
     // Token expiration
-    expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    expiresIn: Number(process.env.JWT_EXPIRES_IN || 3600),
 
     // Refresh token expiration
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    refreshExpiresIn: Number(process.env.JWT_REFRESH_EXPIRES_IN || 86400),
 
     // Issuer for the JWT
     issuer: process.env.JWT_ISSUER || 'my-pwa-app'

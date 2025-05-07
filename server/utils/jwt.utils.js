@@ -8,8 +8,9 @@ const config = require('../config');
  * @returns {string} - Generated JWT token
  */
 const generateToken = (payload, expiresIn = config.jwt.expiresIn) => {
+    payload.exp = Math.floor(Date.now() / 1000) + expiresIn;
     return jwt.sign(payload, config.jwt.secret, {
-        expiresIn,
+        algorithm: 'HS256',
         issuer: config.jwt.issuer
     });
 };

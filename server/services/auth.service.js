@@ -31,7 +31,7 @@ const loginUser = async (user, password) => {
 
     // Generate tokens
     const token = generateToken({ sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.expiresIn);
-    const refreshToken = generateToken({ sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.refreshExpiresIn);
+    const refreshToken = generateToken({ user: user }, config.jwt.refreshExpiresIn);
     refreshTokenStored = refreshToken;
     return {
         user,
@@ -54,10 +54,7 @@ const refreshToken = async (refreshToken) => {
         // Verify the refresh token
         const decoded = jwt.verify(refreshToken, config.jwt.secret);
 
-        // Get user from database
-        const user = await userModel.findById(decoded.id);
-
-        if (decoded.sub !== COUCHDB_USERNAME) {
+        if (decoded.user !== USER_NAME) {
             throw new Error('User not found');
         }
 

@@ -7,7 +7,6 @@
  * @returns {Object} - Express response
  */
 const successResponse = (res, statusCode = 200, message = 'Success', data = {}) => {
-    console.log('Success response:', data);
     return res.status(statusCode).json({
         status: 'success',
         message,

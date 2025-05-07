@@ -23,7 +23,7 @@ const authMiddleware = (req, res, next) => {
         const decoded = jwt.verify(token, config.jwt.secret);
 
         // Add user to request object
-        req.user = decoded;
+        req.user = decoded.user;
 
         // Continue to the next middleware/controller
         next();
