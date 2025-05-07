@@ -1,0 +1,37 @@
+// Install event - cache assets
+self.addEventListener('install', e => {});
+  
+// Activate event - clean up old caches
+self.addEventListener('activate', e => {});
+  
+// Fetch event - respond with cache first, falling back to network
+self.addEventListener('fetch', e => {});
+
+
+// Handle background sync for offline operations
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-pending-operations') {
+    event.waitUntil(syncPendingOperations());
+  }
+});
+
+// Process queued operations when coming back online
+async function syncPendingOperations() {
+  console.log('Syncing pending operations...');
+  
+  // Broadcast a message to all clients that sync is happening
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_STARTED'
+      });
+    });
+  });
+}
+
+// Listen for messages from the client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
