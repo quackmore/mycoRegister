@@ -30,7 +30,7 @@ const loginUser = async (username, password) => {
     }
 
     // Generate tokens
-    const token = generateToken({ sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.expiresIn);
+    const token = generateToken({ user: username, sub: COUCHDB_USERNAME, _couchdb: { roles: ["user"] } }, config.jwt.expiresIn);
     const refreshToken = generateToken({ user: username }, config.jwt.refreshExpiresIn);
     refreshTokenStored = refreshToken;
     return {
