@@ -9,7 +9,7 @@ class AuthService {
         this.eventListeners = {};
 
         // Auto-refresh token setup
-        this.refreshInterval = null;
+        this.refreshTimeout = null;
         this.tokenRefreshThreshold = 60000; // 1 minute before expiry
 
         // Event handling
@@ -139,9 +139,9 @@ class AuthService {
             }
 
             // Clear refresh interval
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-                this.refreshInterval = null;
+            if (this.refreshTimeout) {
+                clearInterval(this.refreshTimeout);
+                this.refreshTimeout = null;
             }
 
             return true;
@@ -270,9 +270,9 @@ class AuthService {
      * Token refresh functionality
      */
     setupTokenRefresh(expiryTime) {
-        // Clear any existing interval
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
+        // Clear any existing timeout
+        if (this.refreshTimeout) {
+            clearTimeout(this.refreshTimeout);
         }
 
         // Calculate time until we should refresh (threshold before expiry)
@@ -286,7 +286,7 @@ class AuthService {
         }
 
         // Set timeout to refresh just before expiry
-        setTimeout(() => {
+        this.refreshTimeout = setTimeout(() => {
             this.refreshTokenSilently();
         }, timeUntilRefresh);
     }
@@ -359,7 +359,6 @@ class AuthService {
         try {
             // Check if online first
             if (navigator.onLine) {
-                // Get CSRF token for the login request
                 const response = await fetch(`${this.API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
@@ -376,7 +375,7 @@ class AuthService {
                 const responseData = await response.json();
 
                 // Check for proper response structure
-                if (!responseData.data || !responseData.data.token || !responseData.data.refreshToken || !responseData.data.expiresIn) {
+                if (!responseData.data || !responseData.data.user || !responseData.data.token || !responseData.data.refreshToken || !responseData.data.expiresIn) {
                     throw new Error('Invalid response format from server');
                 }
 
@@ -385,6 +384,14 @@ class AuthService {
 
                 // Store the tokens
                 this.storeTokens(token, refreshToken, expiresIn);
+
+                // Store credentials for offline authentication
+                // Don't store the actual password but a hash of it
+                await this.storeOfflineCredentials(
+                    username,
+                    password,
+                    responseData.data.user
+                );
 
                 // Dispatch login success event
                 this.dispatchEvent('auth:login-success', {
@@ -465,12 +472,251 @@ class AuthService {
         }
     }
 
-    // Handle offline authentication
+    /**
+    * Check if the app is in offline authentication mode
+    * @returns {boolean} - Whether the app is in offline mode
+    */
+    isInOfflineMode() {
+        return localStorage.getItem('app_offline_mode') === 'true';
+    }
+
+    /**
+     * Handle offline authentication by verifying credentials against locally stored data
+     * @param {string} username - The username to authenticate
+     * @param {string} password - The password to authenticate
+     * @returns {Promise<boolean>} - Whether authentication was successful
+     */
     async handleOfflineAuthentication(username, password) {
         try {
-            // TODO: Implement offline authentication logic
+            // Check if we have stored offline credentials
+            const storedCredentialsKey = 'app_offline_creds';
+            let storedCredentials;
+
+            if (this._isSecureStorageAvailable()) {
+                storedCredentials = this._secureRetrieve(storedCredentialsKey);
+            } else {
+                storedCredentials = this._retrieveAndDecrypt(storedCredentialsKey);
+            }
+
+            if (!storedCredentials) {
+                console.warn('No stored offline credentials found');
+                return false;
+            }
+
+            // Parse the stored credentials
+            const credentials = JSON.parse(storedCredentials);
+
+            // Check if we have credentials for this username
+            if (!credentials[username]) {
+                console.warn('No stored credentials for this username');
+                return false;
+            }
+
+            // Get stored password hash and salt
+            const { hash: storedHash, salt, userData } = credentials[username];
+
+            // Hash the provided password with the stored salt for comparison
+            const calculatedHash = await this._hashPassword(password, salt);
+
+            // Compare hashes
+            if (storedHash === calculatedHash) {
+                // Generate a temporary offline token
+                const offlineToken = this._generateOfflineToken();
+                const offlineExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+
+                // Store offline token
+                this.storeTokens(offlineToken, null, 86400); // 24 hours in seconds
+
+                // Store user data in local storage
+                if (userData) {
+                    localStorage.setItem('app_offline_user', JSON.stringify(userData));
+                }
+
+                // Flag that we're in offline mode
+                localStorage.setItem('app_offline_mode', 'true');
+
+                return true;
+            }
+
+            return false;
         } catch (error) {
             console.error('Offline authentication error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Store user credentials for offline authentication
+     * This should be called after successful online authentication
+     * @param {string} username - The username to store
+     * @param {string} password - The password to store 
+     * @param {Object} userData - User data to store for offline use
+     * @returns {Promise<boolean>} - Whether credentials were stored successfully
+     */
+    async storeOfflineCredentials(username, password, userData) {
+        try {
+            // Generate a random salt
+            const salt = this._generateSalt();
+
+            // Hash the password with the salt
+            const hash = await this._hashPassword(password, salt);
+
+            // Get existing credentials if any
+            const storedCredentialsKey = 'app_offline_creds';
+            let existingCredentials = {};
+
+            if (this._isSecureStorageAvailable()) {
+                const stored = this._secureRetrieve(storedCredentialsKey);
+                if (stored) {
+                    existingCredentials = JSON.parse(stored);
+                }
+            } else {
+                const stored = this._retrieveAndDecrypt(storedCredentialsKey);
+                if (stored) {
+                    existingCredentials = JSON.parse(stored);
+                }
+            }
+
+            // Add/update credentials for this username
+            existingCredentials[username] = {
+                hash,
+                salt,
+                userData,
+                lastUpdated: Date.now()
+            };
+
+            // Store updated credentials
+            const credentialsString = JSON.stringify(existingCredentials);
+
+            if (this._isSecureStorageAvailable()) {
+                this._secureStore(storedCredentialsKey, credentialsString);
+            } else {
+                this._encryptAndStore(storedCredentialsKey, credentialsString);
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Failed to store offline credentials:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Generate a random salt for password hashing
+     * @returns {string} - A random salt string
+     */
+    _generateSalt() {
+        // Generate a random array of 16 bytes
+        const array = new Uint8Array(16);
+        window.crypto.getRandomValues(array);
+
+        // Convert to hex string
+        return Array.from(array)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    /**
+     * Hash a password with a salt using SubtleCrypto if available, or a fallback method
+     * @param {string} password - The password to hash
+     * @param {string} salt - The salt to use
+     * @returns {Promise<string>} - The hashed password
+     */
+    async _hashPassword(password, salt) {
+        try {
+            // Check if SubtleCrypto is available
+            if (window.crypto && window.crypto.subtle) {
+                // Convert password and salt to ArrayBuffer
+                const encoder = new TextEncoder();
+                const passwordData = encoder.encode(password + salt);
+
+                // Hash using SHA-256
+                const hashBuffer = await window.crypto.subtle.digest('SHA-256', passwordData);
+
+                // Convert to hex string
+                return Array.from(new Uint8Array(hashBuffer))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+            } else {
+                // Fallback to a simpler hash for browsers without SubtleCrypto
+                // Note: This is less secure and should be avoided when possible
+                return this._fallbackHash(password + salt);
+            }
+        } catch (error) {
+            console.error('Password hashing error:', error);
+            // Fallback if SubtleCrypto fails
+            return this._fallbackHash(password + salt);
+        }
+    }
+
+    /**
+     * A fallback hashing function for browsers without SubtleCrypto
+     * This is less secure than proper crypto hashing
+     * @param {string} str - The string to hash
+     * @returns {string} - A hash string
+     */
+    _fallbackHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return hash.toString(16);
+    }
+
+    /**
+     * Generate a temporary offline token
+     * @returns {string} - A random token string
+     */
+    _generateOfflineToken() {
+        const array = new Uint8Array(32);
+        window.crypto.getRandomValues(array);
+        return Array.from(array)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    /**
+    * Sync offline activity when returning online
+    * Call this when network connectivity is restored
+    * @returns {Promise<boolean>} - Whether sync was successful
+    */
+    async syncOfflineData() {
+        try {
+            if (!this.isInOfflineMode()) {
+                return true; // Not in offline mode, nothing to sync
+            }
+
+            // Get stored credentials
+            const storedCredentialsKey = 'app_offline_creds';
+            let storedCredentials;
+
+            if (this._isSecureStorageAvailable()) {
+                storedCredentials = this._secureRetrieve(storedCredentialsKey);
+            } else {
+                storedCredentials = this._retrieveAndDecrypt(storedCredentialsKey);
+            }
+
+            if (!storedCredentials) {
+                return false;
+            }
+
+            // Get the username from offline user data
+            const offlineUser = JSON.parse(localStorage.getItem('app_offline_user') || '{}');
+            const username = offlineUser.username;
+
+            if (!username) {
+                return false;
+            }
+
+            // Clear offline mode flag
+            localStorage.removeItem('app_offline_mode');
+
+            // Try to refresh token
+            return await this.refreshTokenSilently();
+        } catch (error) {
+            console.error('Failed to sync offline data:', error);
             return false;
         }
     }
