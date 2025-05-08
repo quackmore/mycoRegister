@@ -13,14 +13,14 @@ class DatabaseService extends EventTarget {
         this.syncDebounceTimeout = null;
         this.syncDebounceDelay = 300; // ms - prevents rapid state changes
         this.manuallyStoppedSync = false; // Flag to track if sync was manually stopped
-        
+
         // Set up auth state listeners
         this.setupAuthListeners();
-        
+
         // Set up connection state listeners
         this.setupConnectionListeners();
     }
-    
+
     setupAuthListeners() {
         // Initialize or reinitialize DB when auth state changes
         authService.addEventListener('auth:authenticated', () => {
@@ -30,11 +30,11 @@ class DatabaseService extends EventTarget {
                 this.startSync();
             }
         });
-        
+
         authService.addEventListener('auth:unauthenticated', () => {
             this.stopSync();
         });
-        
+
         authService.addEventListener('auth:token-refreshed', (data) => {
             // When token is refreshed, we need to reinitialize the remote connection
             this.initializeRemoteDB();
@@ -44,19 +44,19 @@ class DatabaseService extends EventTarget {
                 this.startSync();
             }
         });
-        
+
         // Initialize on startup if user is already authenticated
         if (authService.isAuthenticated()) {
             this.initializeRemoteDB();
         }
     }
-    
+
     setupConnectionListeners() {
         // Handle online state
         connectionService.on('online', () => {
             console.log('Connection is now online');
             this.isOnline = true;
-            
+
             // If authenticated, start sync when we go online
             if (authService.isAuthenticated()) {
                 // Initialize remote DB if needed
@@ -66,85 +66,86 @@ class DatabaseService extends EventTarget {
                 this.startSync();
             }
         });
-        
+
         // Handle offline state
         connectionService.on('offline', () => {
             console.log('Connection is now offline');
             this.isOnline = false;
-            
+
             // Mark that we're stopping sync due to connection loss, not user action
             this.manuallyStoppedSync = false;
-            
+
             // Stop sync when we go offline - we'll continue using local DB
             this.stopSync();
-            
+
             // Set state to a special "offline" state rather than "inactive"
             this.setSyncState('offline', { reason: 'connection_lost' });
         });
     }
-    
+
     initializeLocalDB() {
         if (!this.localDB) {
             this.localDB = new PouchDB(this.dbName);
             console.log('Local PouchDB initialized');
+            this.localDB.createIndex({
+                index: { fields: ['type', 'name', 'surname', 'job'] }
+            });
+            console.log('Database indexes created');
         }
         return this.localDB;
     }
-    
+
     initializeRemoteDB() {
         // Get current auth token
         const token = authService.getToken();
-        
+
         if (!token) {
             console.error('Cannot initialize remote DB: No authentication token');
             return null;
         }
-        
+
         // Create or reinitialize remote DB connection with auth headers
-        this.remoteDB = new PouchDB(`${this.serverUrl}/${this.dbName}`, {
+        this.remoteDB = new PouchDB(`${window.location.origin}${this.serverUrl}/${this.dbName}`, {
             skip_setup: true,
             fetch: (url, opts) => {
                 // Add authorization header to each request
-                opts.headers = opts.headers || {};
-                
-                // Get fresh token (in case it was refreshed)
-                const currentToken = authService.getToken();
-                
-                if (currentToken) {
-                    opts.headers.Authorization = `Bearer ${currentToken}`;
+                if (opts.headers instanceof Headers) {
+                    opts.headers.set('Authorization', `Bearer ${authService.getToken()}`);
+                } else {
+                    opts.headers = opts.headers || {};
+                    opts.headers['Authorization'] = `Bearer ${authService.getToken()}`;
                 }
-                
-                return PouchDB.fetch(url, opts);
+                return fetch(url, opts);
             }
         });
-        
+
         console.log('Remote PouchDB connection initialized with auth token');
         return this.remoteDB;
     }
-    
+
     // Set sync state with debouncing to prevent rapid UI changes
     setSyncState(newState, detail = {}) {
         clearTimeout(this.syncDebounceTimeout);
-        
+
         // If it's an important state (like error, offline), update immediately
         // added 'change' state to show sync progress
         if (newState === 'error' || newState === 'offline' || newState === 'change') {
             this._updateSyncState(newState, detail);
             return;
         }
-        
+
         // Otherwise debounce to prevent flickering
         this.syncDebounceTimeout = setTimeout(() => {
             this._updateSyncState(newState, detail);
         }, this.syncDebounceDelay);
     }
-    
+
     _updateSyncState(newState, detail = {}) {
         // Only dispatch event if state actually changed
         if (this.syncState !== newState) {
             const oldState = this.syncState;
             this.syncState = newState;
-            
+
             // Dispatch event with relevant details
             const eventDetail = {
                 oldState,
@@ -152,50 +153,50 @@ class DatabaseService extends EventTarget {
                 timestamp: Date.now(),
                 ...detail
             };
-            
+
             console.log(`Sync state changed: ${oldState} -> ${newState}`, eventDetail);
-            this.dispatchEvent(new CustomEvent('sync:state-changed', { 
-                detail: eventDetail 
+            this.dispatchEvent(new CustomEvent('sync:state-changed', {
+                detail: eventDetail
             }));
-            
+
             // Also dispatch specific events for convenience
-            this.dispatchEvent(new CustomEvent(`sync:${newState}`, { 
-                detail: eventDetail 
+            this.dispatchEvent(new CustomEvent(`sync:${newState}`, {
+                detail: eventDetail
             }));
         }
     }
-    
+
     startSync() {
         // Don't start sync if offline
         if (!this.isOnline) {
             console.log('Cannot start sync: device is offline');
             return;
         }
-        
+
         // Don't start a new sync if one is already running
         if (this.syncHandler) {
             console.log('Sync already in progress');
             return;
         }
-        
+
         // Ensure we have both databases initialized
         this.initializeLocalDB();
-        
+
         if (!this.remoteDB) {
             this.initializeRemoteDB();
         }
-        
+
         if (!this.localDB || !this.remoteDB) {
             console.error('Cannot start sync: databases not initialized');
             return;
         }
-        
+
         // Reset manual stop flag when starting new sync
         this.manuallyStoppedSync = false;
-        
+
         // Set initial state as we begin sync
         this.setSyncState('active', { message: 'Starting synchronization' });
-        
+
         // Start bidirectional sync
         this.syncHandler = this.localDB.sync(this.remoteDB, {
             live: true,
@@ -206,16 +207,16 @@ class DatabaseService extends EventTarget {
             }
         }).on('change', info => {
             console.log('PouchDB sync change:', info);
-            this.setSyncState('change', { 
+            this.setSyncState('change', {
                 change: info,
                 direction: info.direction,
                 docs_read: info.docs_read,
                 docs_written: info.docs_written
             });
-            
+
             // Dispatch detailed change event
-            this.dispatchEvent(new CustomEvent('sync:change', { 
-                detail: { info, timestamp: Date.now() } 
+            this.dispatchEvent(new CustomEvent('sync:change', {
+                detail: { info, timestamp: Date.now() }
             }));
         }).on('paused', info => {
             console.log('PouchDB sync paused');
@@ -225,19 +226,19 @@ class DatabaseService extends EventTarget {
             this.setSyncState('active');
         }).on('denied', info => {
             console.error('PouchDB sync denied:', info);
-            this.setSyncState('error', { 
+            this.setSyncState('error', {
                 errorType: 'denied',
                 info
             });
         }).on('error', err => {
             console.error('PouchDB sync error:', err);
-            
+
             // Set error state immediately (not debounced)
             this.setSyncState('error', {
                 errorType: 'sync',
                 error: err
             });
-            
+
             // Check if error is related to authentication
             if (err.status === 401 || err.status === 403) {
                 // Try to refresh token
@@ -248,32 +249,32 @@ class DatabaseService extends EventTarget {
             }
         }).on('complete', info => {
             console.log('PouchDB one-time sync complete', info);
-            
+
             // Only process complete event if sync wasn't manually stopped
             // or if we're not already in an offline state
             if (!this.manuallyStoppedSync && this.syncState !== 'offline') {
                 // For one-time sync or when replication completes naturally
                 this.setSyncState('complete', { info });
-                
-                this.dispatchEvent(new CustomEvent('sync:complete', { 
-                    detail: { info, timestamp: Date.now() } 
+
+                this.dispatchEvent(new CustomEvent('sync:complete', {
+                    detail: { info, timestamp: Date.now() }
                 }));
             }
         });
-        
+
         console.log('PouchDB sync started');
     }
-    
+
     stopSync() {
         if (this.syncHandler) {
             // Set flag to indicate this was a manual/intentional stop
             this.manuallyStoppedSync = true;
-            
+
             // Cancel the sync
             this.syncHandler.cancel();
             this.syncHandler = null;
             console.log('PouchDB sync stopped');
-            
+
             // Only update state if we're not already in offline or error state
             if (this.syncState !== 'offline' && this.syncState !== 'error') {
                 // Update state and notify listeners
@@ -281,18 +282,18 @@ class DatabaseService extends EventTarget {
             }
         }
     }
-    
+
     async getDatabase() {
         // Return local DB with sync capabilities if authenticated and online
         this.initializeLocalDB();
-        
+
         if (authService.isAuthenticated() && this.isOnline && !this.syncHandler) {
             this.startSync();
         }
-        
+
         return this.localDB;
     }
-    
+
     /**
      * Force a manual sync attempt if conditions allow
      * Useful for user-triggered sync operations
@@ -302,12 +303,12 @@ class DatabaseService extends EventTarget {
             console.log('Cannot force sync: device is offline');
             return false;
         }
-        
+
         if (!authService.isAuthenticated()) {
             console.log('Cannot force sync: not authenticated');
             return false;
         }
-        
+
         // Stop any existing sync and restart
         this.stopSync();
         this.startSync();

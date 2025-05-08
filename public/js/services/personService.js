@@ -1,4 +1,5 @@
 // Service for CRUD operations on persons
+// using window.db
 const PersonService = {
     // Create a new person
     create: async function(person) {
@@ -16,7 +17,7 @@ const PersonService = {
           createdAt: new Date().toISOString()
         };
         
-        const result = await window.dbService.put(doc);
+        const result = await db.put(doc);
         return result;
       } catch (err) {
         console.error('Error creating person', err);
@@ -28,7 +29,7 @@ const PersonService = {
     update: async function(person) {
       try {
         // Get the latest version of the document
-        const doc = await window.dbService.get(person._id);
+        const doc = await db.get(person._id);
         
         // Update fields
         doc.name = person.name;
@@ -36,7 +37,7 @@ const PersonService = {
         doc.job = person.job;
         doc.updatedAt = new Date().toISOString();
         
-        const result = await window.dbService.put(doc);
+        const result = await db.put(doc);
         return result;
       } catch (err) {
         console.error('Error updating person', err);
@@ -47,8 +48,8 @@ const PersonService = {
     // Delete a person
     delete: async function(personId) {
       try {
-        const doc = await window.dbService.get(personId);
-        const result = await window.dbService.remove(doc);
+        const doc = await db.get(personId);
+        const result = await db.remove(doc);
         return result;
       } catch (err) {
         console.error('Error deleting person', err);
@@ -59,7 +60,7 @@ const PersonService = {
     // Get all persons
     getAll: async function() {
       try {
-        const result = await window.dbService.getAllByType('person');
+        const result = await db.getAllByType('person');
         return result.docs;
       } catch (err) {
         console.error('Error getting all persons', err);
@@ -70,7 +71,7 @@ const PersonService = {
     // Get person by ID
     getById: async function(personId) {
       try {
-        const doc = await window.dbService.get(personId);
+        const doc = await db.get(personId);
         return doc;
       } catch (err) {
         console.error('Error getting person by ID', err);
@@ -81,7 +82,7 @@ const PersonService = {
     // Search persons by name or surname
     search: async function(searchTerm) {
       try {
-        const result = await window.dbService.find({
+        const result = await db.find({
           selector: {
             type: 'person',
             $or: [
@@ -100,7 +101,7 @@ const PersonService = {
     // Filter persons by job
     filterByJob: async function(job) {
       try {
-        const result = await window.dbService.find({
+        const result = await db.find({
           selector: {
             type: 'person',
             job: job
