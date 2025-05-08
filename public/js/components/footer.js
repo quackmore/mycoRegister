@@ -35,6 +35,16 @@ const Footer = {
     const connectionIndicator = document.getElementById('connection-indicator');
     if (!connectionIndicator) return;
 
+    // checkout connection status at startup in case events were missed
+    if (connectionService.online()) {
+      connectionIndicator.textContent = 'Online';
+      connectionIndicator.className = 'online';
+    }
+    else {
+      connectionIndicator.textContent = 'Offline';
+      connectionIndicator.className = 'offline';
+    }
+
     connectionService.on('online', () => {
       connectionIndicator.textContent = 'Online';
       connectionIndicator.className = 'online';
@@ -43,11 +53,6 @@ const Footer = {
     connectionService.on('offline', () => {
       connectionIndicator.textContent = 'Offline';
       connectionIndicator.className = 'offline';
-    });
-
-    connectionService.on('checking', () => {
-      connectionIndicator.textContent = 'Checking...';
-      connectionIndicator.className = 'checking';
     });
   }
 };

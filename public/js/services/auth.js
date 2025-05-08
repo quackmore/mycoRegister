@@ -1,5 +1,7 @@
 // auth.service.js - Service for handling authentication
 
+// const connectionService = require("./connection");
+
 class AuthService {
     constructor() {
         this.API_BASE_URL = '/api/auth';
@@ -358,7 +360,7 @@ class AuthService {
 
         try {
             // Check if online first
-            if (navigator.onLine) {
+            if (connectionService.online()) {
                 const response = await fetch(`${this.API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
@@ -462,7 +464,7 @@ class AuthService {
             this.dispatchEvent('auth:error', { error });
 
             // If offline, still clear local auth state
-            if (!navigator.onLine) {
+            if (!connectionService.online()) {
                 this.clearTokens();
                 this.dispatchEvent('auth:logout');
                 return true;
