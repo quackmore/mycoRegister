@@ -27,8 +27,9 @@ const Footer = {
     // Insert footer into container
     footerContainer.appendChild(footer);
 
-    // Initialize connection status
+    // Initialize
     this.initConnectionStatus();
+    this.initSyncStatus();
   },
 
   initConnectionStatus: function () {
@@ -53,6 +54,34 @@ const Footer = {
     connectionService.on('offline', () => {
       connectionIndicator.textContent = 'Offline';
       connectionIndicator.className = 'offline';
+    });
+  },
+
+  initSyncStatus: function () {
+    const syncStatus = document.getElementById('sync-status');
+    if (!syncStatus) return;
+    const statusText = syncStatus.querySelector('.status-text');
+    if (!statusText) return;
+
+    statusText.textContent = '';
+    syncStatus.classList.remove('active');
+
+    dbService.addEventListener('sync:state-changed', (event) => {
+      const { newState, oldState } = event.detail;
+      switch (newState) {
+        case 'change':
+          statusText.textContent = 'Syncing...';
+          syncStatus.classList.add('active');
+          break;
+        case 'error':
+          statusText.textContent = 'Sync error';
+          syncStatus.classList.add('active');
+          break;
+        default:
+          statusText.textContent = '';
+          syncStatus.classList.remove('active');
+          break;
+      }
     });
   }
 };
