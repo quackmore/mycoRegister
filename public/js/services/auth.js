@@ -774,4 +774,6 @@ class AuthService {
 
 // Create singleton instance
 const authService = new AuthService();
-export default authService;
+console.log('AuthService initialized');
+// Export for global access
+window.authService = authService;

@@ -59,4 +59,5 @@ const Header = {
 // Initialize header when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   Header.init();
+  console.log('Header initialized');
 });

@@ -29,4 +29,5 @@ const UpdateNotification = {
 // Initialize updateNotification when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   UpdateNotification.init();
+  console.log('UpdateNotification initialized');
 });

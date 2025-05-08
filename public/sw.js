@@ -4,16 +4,18 @@ const CACHE_NAME = 'persons-pwa-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/assets/pouchdb@8.0.1.min.js',
+  '/assets/pouchdb@8.0.1.find.min.js',
+  '/assets/pouchdb-authentication@1.1.3.min.js',  
   '/css/main.css',
   '/css/components.css',
   '/css/responsive.css',
   '/js/app.js',
   '/js/services/auth.js',
+  '/js/services/connection.js',
   '/js/services/db.js',
-  '/js/services/sync.js',
   '/js/services/personService.js',
   '/js/services/pwa-registration.js',
-  '/js/services/updateManager.js',
   '/js/components/header.js',
   '/js/components/footer.js',
   '/js/components/login.js',
@@ -24,8 +26,6 @@ const ASSETS_TO_CACHE = [
   '/img/logo.png',
 //  '/img/icons/icon-192x192.png',
 //  '/img/icons/icon-512x512.png',
-  'https://cdn.jsdelivr.net/npm/pouchdb@8.0.1/dist/pouchdb.min.js',
-  'https://cdn.jsdelivr.net/npm/pouchdb@8.0.1/dist/pouchdb.find.min.js'
 ];
 
 // Install event - cache assets
@@ -61,8 +61,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   // Skip cross-origin requests
-  if (!e.request.url.startsWith(self.location.origin) && 
-      !e.request.url.includes('cdn.jsdelivr.net')) {
+  if (!e.request.url.startsWith(self.location.origin)) {
     return;
   }
 
@@ -71,15 +70,13 @@ self.addEventListener('fetch', e => {
       e.request.url.includes('/_bulk_docs') ||
       e.request.url.includes('/_revs_diff') ||
       e.request.url.includes('/_local/') ||
-      e.request.url.includes('/db/') ||
-      e.request.url.includes('/inventory/')) {
+      e.request.url.includes('/db/')) {
     // Let PouchDB replication traffic go directly to the network
     return;
   }
 
   // Special handling for authentication and API endpoints
   if (e.request.url.includes('/api/auth/') || 
-      e.request.url.includes('/api/csrf-token') ||
       e.request.url.includes('/_session') || 
       e.request.url.includes('/_users')) {
     
@@ -90,7 +87,7 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => {
         // If the fetch fails (offline), handle based on the specific endpoint
-        if (e.request.url.includes('/api/auth/verify')) {
+        if (e.request.url.includes('/api/auth/me')) {
           console.log('Offline auth verification requested');
           // Instead of custom error, trigger the offline auth flow
           return new Response(
@@ -120,7 +117,7 @@ self.addEventListener('fetch', e => {
           );
         }
         
-        if (e.request.url.includes('/api/auth/refresh')) {
+        if (e.request.url.includes('/api/auth/refresh-token')) {
           return new Response(
             JSON.stringify({ 
               error: 'offline', 
@@ -191,27 +188,6 @@ self.addEventListener('fetch', e => {
       })
   );
 });
-
-// Handle background sync for offline operations
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-pending-operations') {
-    event.waitUntil(syncPendingOperations());
-  }
-});
-
-// Process queued operations when coming back online
-async function syncPendingOperations() {
-  console.log('Syncing pending operations...');
-  
-  // Broadcast a message to all clients that sync is happening
-  self.clients.matchAll().then(clients => {
-    clients.forEach(client => {
-      client.postMessage({
-        type: 'SYNC_STARTED'
-      });
-    });
-  });
-}
 
 // Listen for messages from the client
 self.addEventListener('message', (event) => {

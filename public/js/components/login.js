@@ -1,7 +1,5 @@
 // login.js - Component for handling login UI visibility
 
-import authService from '../services/auth.js';
-
 class LoginComponent {
     constructor() {
         this.loginContainer = null;
@@ -89,4 +87,6 @@ class LoginComponent {
 
 // Create and export singleton instance
 const loginComponent = new LoginComponent();
-export default loginComponent;
+console.log('Login component initialized');
+// Export for global access
+window.loginComponent = loginComponent;

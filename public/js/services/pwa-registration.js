@@ -1,8 +1,5 @@
 // pwa-registration.js - Service Worker registration and update handling
 
-// Import the sync service
-import syncService from './sync.js';
-
 // Check if service worker is supported
 if ('serviceWorker' in navigator) {
     console.log('PWA starting...');
@@ -19,16 +16,6 @@ async function registerServiceWorker() {
     try {
         const registration = await navigator.serviceWorker.register('/sw.js');
         console.log('Service Worker registered with scope:', registration.scope);
-        // Set up the background sync when supported
-        if ('sync' in registration) {
-            console.log('Background Sync is supported');
-            document.addEventListener('online', () => {
-                registration.sync.register('sync-pending-operations')
-                    .then(() => console.log('Sync registered'))
-                    .catch(err => console.error('Sync registration failed:', err));
-            });
-        }
-
         // Setup update notification
         setupUpdateNotification(registration);
     } catch (error) {
@@ -58,12 +45,7 @@ function handleServiceWorkerUpdates() {
 
     // Listen for messages from the service worker
     navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'SYNC_STARTED') {
-            console.log('Background sync started');
-
-            // Update UI to show sync is happening
-            syncService.updateSyncStatus('syncing');
-        }
+        const { type, data } = event.data;
     });
 
     // Check for updates
@@ -96,32 +78,7 @@ function setupUpdateNotification(registration) {
     // Update button handler - check for pending sync operations first
     updateBtn.addEventListener('click', async () => {
         // Check sync status
-        if (syncService.getSyncStatus() === 'syncing') {
-            // Show sync in progress confirmation
-            if (!confirm('Sync is currently in progress. Updating now might cause data loss. Wait for sync to complete?')) {
-                // User wants to update anyway
-                performUpdate(registration);
-            }
-        } else if (syncService.pendingOperations && syncService.pendingOperations.length > 0) {
-            // Show pending operations confirmation
-            if (confirm('There are unsaved changes. Do you want to sync these changes before updating?')) {
-                try {
-                    // Try to process the queue first
-                    await syncService.processQueuedOperations();
-                    performUpdate(registration);
-                } catch (error) {
-                    console.error('Failed to process operations before update:', error);
-                    if (confirm('Failed to sync changes. Update anyway? (May cause data loss)')) {
-                        performUpdate(registration);
-                    }
-                }
-            } else {
-                performUpdate(registration);
-            }
-        } else {
-            // No pending operations, proceed with update
-            performUpdate(registration);
-        }
+        performUpdate(registration);
     });
 
     // Update later button handler
@@ -142,9 +99,3 @@ function performUpdate(registration) {
     // Reload the page to apply updates
     window.location.reload();
 }
-
-// document.addEventListener('DOMContentLoaded', () => {
-// });
-
-// Export for external use
-export { registerServiceWorker, handleServiceWorkerUpdates };
