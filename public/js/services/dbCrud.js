@@ -44,7 +44,20 @@ class DbCrud {
       return this.local;
   }
 
-  // Create or update a document
+  // Create a document
+  async post(doc) {
+      try {
+          const result = await this.local.post(doc);
+          this.dispatchEvent('db:document-created', { id: doc._id });
+          return result;
+      } catch (error) {
+          console.error('Error creating document:', error);
+          this.dispatchEvent('db:error', { error });
+          throw error;
+      }
+  }
+
+  // Update a document
   async put(doc) {
       try {
           const result = await this.local.put(doc);

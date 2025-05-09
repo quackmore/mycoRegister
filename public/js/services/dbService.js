@@ -88,7 +88,7 @@ class DatabaseService extends EventTarget {
             this.localDB = new PouchDB(this.dbName);
             console.log('Local PouchDB initialized');
             this.localDB.createIndex({
-                index: { fields: ['type', 'name', 'surname', 'job'] }
+                index: { fields: fungiSampleModel.indexFields }
             });
             console.log('Database indexes created');
         }

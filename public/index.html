@@ -52,22 +52,99 @@
                 <h1>Manage fungi</h1>
 
                 <!-- Form for adding/editing fungi -->
-                <div id="person-form-container">
-                    <h2 id="form-title">Add New Person</h2>
-                    <form id="person-form">
+                <div id="fungi-sample-form-container">
+                    <h2 id="form-title">Add New Fungi Sample</h2>
+                    <form id="fungi-sample-form">
+                        <!-- Taxonomic Information -->
                         <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" name="name" required>
+                            <label for="taxonGenus">Genus*</label>
+                            <input type="text" id="taxonGenus" name="taxonGenus" required>
                         </div>
                         <div class="form-group">
-                            <label for="surname">Surname</label>
-                            <input type="text" id="surname" name="surname" required>
+                            <label for="taxonSpecies">Species*</label>
+                            <input type="text" id="taxonSpecies" name="taxonSpecies" required>
                         </div>
                         <div class="form-group">
-                            <label for="job">Job</label>
-                            <input type="text" id="job" name="job" required>
+                            <label for="authority">Authority</label>
+                            <input type="text" id="authority" name="authority">
                         </div>
-                        <input type="hidden" id="person-id">
+
+                        <!-- Collection Information -->
+                        <div class="form-group">
+                            <label for="collectionDate">Collection Date*</label>
+                            <input type="date" id="collectionDate" name="collectionDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="collector">Collector*</label>
+                            <input type="text" id="collector" name="collector" required>
+                        </div>
+
+                        <!-- Locality Information -->
+                        <div class="form-group">
+                            <label for="locality">Locality*</label>
+                            <input type="text" id="locality" name="locality" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="localityPlace">Locality Place</label>
+                            <input type="text" id="localityPlace" name="localityPlace">
+                        </div>
+                        <div class="form-group">
+                            <label for="localityElevation">Elevation</label>
+                            <input type="text" id="localityElevation" name="localityElevation">
+                        </div>
+                        <div class="form-group">
+                            <label for="localityCoordinates">Coordinates</label>
+                            <input type="text" id="localityCoordinates" name="localityCoordinates"
+                                placeholder="e.g., 45.123, -122.456">
+                        </div>
+
+                        <!-- Habitat Information -->
+                        <div class="form-group">
+                            <label for="habitat">Habitat*</label>
+                            <input type="text" id="habitat" name="habitat" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="substrate">Substrate</label>
+                            <input type="text" id="substrate" name="substrate">
+                        </div>
+                        <div class="form-group">
+                            <label for="associatedTaxa">Associated Taxa</label>
+                            <input type="text" id="associatedTaxa" name="associatedTaxa">
+                        </div>
+
+                        <!-- Sample Information -->
+                        <div class="form-group">
+                            <label for="sampleType">Sample Type*</label>
+                            <input type="text" id="sampleType" name="sampleType" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="exsiccataCode">Exsiccata Code</label>
+                            <input type="text" id="exsiccataCode" name="exsiccataCode">
+                        </div>
+
+                        <!-- Determination Information -->
+                        <div class="form-group">
+                            <label for="determiner">Determiner</label>
+                            <input type="text" id="determiner" name="determiner">
+                        </div>
+                        <div class="form-group">
+                            <label for="determinationDate">Determination Date</label>
+                            <input type="date" id="determinationDate" name="determinationDate">
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="form-group">
+                            <label for="notes">Notes</label>
+                            <textarea id="notes" name="notes" rows="4"></textarea>
+                        </div>
+
+                        <!-- Picture -->
+                        <div class="form-group">
+                            <label for="picture">Picture URL</label>
+                            <input type="text" id="picture" name="picture">
+                        </div>
+
+                        <input type="hidden" id="fungi-id">
                         <div class="button-group">
                             <button type="submit" class="btn primary">Save</button>
                             <button type="reset" class="btn secondary" id="cancel-edit">Cancel</button>
@@ -75,17 +152,20 @@
                     </form>
                 </div>
 
-                <!-- List of fungi -->
+                <!-- List of fungi 
                 <div id="fungi-list-container">
                     <h2>All fungi</h2>
                     <div class="search-container">
                         <input type="text" id="search-fungi" placeholder="Search fungi...">
                     </div>
                     <div id="fungi-list" class="list-container">
+                        -->
                         <!-- Person entries will be dynamically added here -->
+                        <!--
                         <div class="loader">Loading fungi...</div>
                     </div>
                 </div>
+                -->
             </div>
         </div>
 
@@ -103,13 +183,13 @@
     <script src="js/components/updateNotification.js"></script>
     <script src="js/components/footer.js"></script>
     <script src="js/services/auth.js"></script>
+    <script src="js/models/fungiSample.js"></script>
     <script src="js/services/dbService.js"></script>
     <script src="js/services/dbCrud.js"></script>
     <script src="js/components/login.js"></script>
     <script src="js/services/pwa-registration.js"></script>
-    <script src="js/services/personService.js"></script>
-    <script src="js/components/personForm.js"></script>
-    <script src="js/components/personList.js"></script>
+    <script src="js/services/fungiService.js"></script>
+    <script src="js/components/fungiSampleForm.js"></script>
 </body>
 
 </html>

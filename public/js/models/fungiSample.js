@@ -1,0 +1,65 @@
+const fungiSampleModel = {
+    type: 'fungiSample',
+    allFields: [
+        '_id', // let PouchDB handle this
+        'createdAt',
+        'createdBy',
+        'updatedAt',
+        'updatedBy',
+        'type',
+        'taxonGenus',
+        'taxonSpecies',
+        'authority',
+        'collectionDate',
+        'collector',
+        'locality',
+        'localityPlace',
+        'localityElevation',
+        'localityCoordinates',
+        'habitat',
+        'substrate',
+        'associatedTaxa',
+        'notes',
+        'determiner',
+        'determinationDate',
+        'sampleType',
+        'exsiccataCode',
+        'picture'
+    ],
+    requiredFields: [
+        'taxonGenus',
+        'taxonSpecies',
+        'collectionDate',
+        'collector',
+        'locality',
+        'habitat',
+        'sampleType'
+    ],
+    indexFields: [
+        'createdAt',
+        'createdBy',
+        'updatedAt',
+        'updatedBy',
+        'taxonGenus',
+        'taxonSpecies',
+        'authority',
+        'collectionDate',
+        'collector',
+        'locality',
+        'localityPlace',
+        'localityElevation',
+        'localityCoordinates',
+        'habitat',
+        'substrate',
+        'associatedTaxa',
+        'notes',
+        'determiner',
+        'determinationDate',
+        'sampleType',
+        'exsiccataCode',
+        'picture'
+    ],
+
+};
+
+window.fungiSampleModel = fungiSampleModel;

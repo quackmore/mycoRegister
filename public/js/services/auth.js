@@ -742,7 +742,7 @@ class AuthService {
             }
 
             const userData = await response.json();
-            return userData;
+            return userData.data;
         } catch (error) {
             console.error('Error fetching current user:', error);
 
