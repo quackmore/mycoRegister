@@ -4,17 +4,38 @@ const FungiSampleForm = {
   currentId: null,
   isEditing: false,
   autoCompleteData: {},
+  isFormDirty: false,
+  originalFormData: {},
 
   // Initialize form
   init: async function () {
-    const formContainer = document.getElementById('fungi-sample-form-container');
-    if (!formContainer) return;
+    // Add sample types to the model if not already present
+    if (!window.fungiSampleModel.sampleTypes) {
+      // Default sample types if not defined in the model
+      window.fungiSampleModel.sampleTypes = [
+        'specimen',
+        'culture',
+        'exsiccata',
+        'dna',
+        'spore print',
+        'photograph'
+      ];
+    }
+
+    // Get modal elements
+    this.modal = document.getElementById('fungi-sample-modal');
+    if (!this.modal) return;
+
+    // this.openModalBtn = document.getElementById('open-fungi-modal');
+    this.closeModalBtn = document.querySelector('.close-modal');
 
     // Get form elements
     this.form = document.getElementById('fungi-sample-form');
     this.formTitle = document.getElementById('form-title');
     this.fungiIdInput = document.getElementById('fungi-id');
     this.cancelBtn = document.getElementById('cancel-edit');
+    this.sampleTypeSelect = document.getElementById('sampleType');
+    this.exsiccataCodeRow = document.getElementById('exsiccataCodeRow');
 
     // Get all form input fields
     this.formFields = {};
@@ -22,8 +43,14 @@ const FungiSampleForm = {
       // Skip type and fields starting with _
       if (field === 'type' || field.startsWith('_')) return;
 
-      this.formFields[field] = document.getElementById(field);
+      const element = document.getElementById(field);
+      if (element) {
+        this.formFields[field] = element;
+      }
     });
+
+    // Populate sample type dropdown
+    this.populateSampleTypes();
 
     // Fetch and set up autocomplete data
     await this.setupAutocompleteData();
@@ -32,18 +59,32 @@ const FungiSampleForm = {
     this.setupEventListeners();
   },
 
+  // Populate sample types dropdown
+  populateSampleTypes: function () {
+    const sampleTypes = window.fungiSampleModel.sampleTypes;
+    if (sampleTypes && sampleTypes.length > 0) {
+      sampleTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = this.formatFieldName(type);
+        this.sampleTypeSelect.appendChild(option);
+      });
+    }
+  },
+
   // Fetch autocomplete data for all fields
   setupAutocompleteData: async function () {
     try {
       for (const field in this.formFields) {
-        if (this.formFields[field]) {
-          // Get unique values for this field
-          const values = await FungiService.getAllUniqueValues(field);
-          this.autoCompleteData[field] = values;
+        // Skip select elements (already have options)
+        if (this.formFields[field].tagName === 'SELECT') continue;
 
-          // Set up autocomplete for this field
-          this.setupFieldAutocomplete(field, values);
-        }
+        // Get unique values for this field
+        const values = await FungiService.getAllUniqueValues(field);
+        this.autoCompleteData[field] = values;
+
+        // Set up autocomplete for this field
+        this.setupFieldAutocomplete(field, values);
       }
     } catch (err) {
       console.error('Error setting up autocomplete data', err);
@@ -53,7 +94,7 @@ const FungiSampleForm = {
   // Set up autocomplete for a specific field
   setupFieldAutocomplete: function (field, values) {
     const inputElement = this.formFields[field];
-    if (!inputElement) return;
+    if (!inputElement || inputElement.tagName === 'SELECT') return;
 
     // Disable browser's default autocomplete
     inputElement.setAttribute('autocomplete', 'off');
@@ -77,6 +118,7 @@ const FungiSampleForm = {
 
     // Add input event listener
     inputElement.addEventListener('input', () => {
+      this.isFormDirty = true;
       const inputValue = inputElement.value.trim().toLowerCase();
 
       // Close autocomplete list if input is empty
@@ -99,20 +141,19 @@ const FungiSampleForm = {
           const item = document.createElement('div');
           item.className = 'autocomplete-item';
           item.textContent = match;
-          item.style.padding = '10px';
-          item.style.cursor = 'pointer';
 
           item.addEventListener('click', () => {
             inputElement.value = match;
             autocompleteContainer.style.display = 'none';
+            this.isFormDirty = true;
           });
 
           item.addEventListener('mouseover', () => {
-            item.style.backgroundColor = '#f0f0f0';
+            item.classList.add('active');
           });
 
           item.addEventListener('mouseout', () => {
-            item.style.backgroundColor = '';
+            item.classList.remove('active');
           });
 
           autocompleteContainer.appendChild(item);
@@ -140,15 +181,12 @@ const FungiSampleForm = {
         if (!activeItem) {
           if (items[0]) {
             items[0].classList.add('active');
-            items[0].style.backgroundColor = '#f0f0f0';
           }
         } else {
           const nextItem = activeItem.nextElementSibling;
           if (nextItem) {
             activeItem.classList.remove('active');
-            activeItem.style.backgroundColor = '';
             nextItem.classList.add('active');
-            nextItem.style.backgroundColor = '#f0f0f0';
           }
         }
       }
@@ -160,9 +198,7 @@ const FungiSampleForm = {
           const prevItem = activeItem.previousElementSibling;
           if (prevItem) {
             activeItem.classList.remove('active');
-            activeItem.style.backgroundColor = '';
             prevItem.classList.add('active');
-            prevItem.style.backgroundColor = '#f0f0f0';
           }
         }
       }
@@ -172,6 +208,7 @@ const FungiSampleForm = {
         e.preventDefault();
         inputElement.value = activeItem.textContent;
         autocompleteContainer.style.display = 'none';
+        this.isFormDirty = true;
       }
 
       // Escape
@@ -192,8 +229,88 @@ const FungiSampleForm = {
     // Cancel button
     this.cancelBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      this.resetForm();
+      this.attemptToCloseForm();
     });
+
+    // Open modal button
+    // if (this.openModalBtn) {
+    //   this.openModalBtn.addEventListener('click', () => {
+    //     this.openModal();
+    //   });
+    // }
+
+    // Close modal button
+    if (this.closeModalBtn) {
+      this.closeModalBtn.addEventListener('click', () => {
+        this.attemptToCloseForm();
+      });
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+      if (e.target === this.modal) {
+        this.attemptToCloseForm();
+      }
+    });
+
+    // Sample type change
+    this.sampleTypeSelect.addEventListener('change', () => {
+      this.toggleExsiccataCodeField();
+      this.isFormDirty = true;
+    });
+
+    // Track form changes
+    for (const field in this.formFields) {
+      if (this.formFields[field]) {
+        this.formFields[field].addEventListener('input', () => {
+          this.isFormDirty = true;
+        });
+      }
+    }
+
+    // Prevent accidental navigation away from dirty form
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isFormDirty && this.modal.style.display === 'block') {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    });
+  },
+
+  // Toggle exsiccata code field visibility
+  toggleExsiccataCodeField: function () {
+    const selectedType = this.sampleTypeSelect.value;
+    if (selectedType === 'exsiccata') {
+      this.exsiccataCodeRow.style.display = 'flex';
+    } else {
+      this.exsiccataCodeRow.style.display = 'none';
+    }
+  },
+
+  // Attempt to close form, checking for unsaved changes
+  attemptToCloseForm: function () {
+    if (this.isFormDirty) {
+      const confirmClose = confirm('You have unsaved changes. Are you sure you want to close this form?');
+      if (!confirmClose) {
+        return;
+      }
+    }
+
+    this.closeModal();
+    this.resetForm();
+  },
+
+  // Open modal
+  openModal: function () {
+    this.modal.style.display = 'block';
+    document.body.style.overflow = 'hidden'; // Prevent scrolling behind modal
+  },
+
+  // Close modal
+  closeModal: function () {
+    this.modal.style.display = 'none';
+    document.body.style.overflow = '';
   },
 
   // Handle form submission
@@ -215,11 +332,12 @@ const FungiSampleForm = {
         result = await FungiService.create(fungiSampleData);
       }
 
-      // Reset form
-      this.resetForm();
-
       // Show success message
       this.showMessage('success', `Fungi sample ${this.isEditing ? 'updated' : 'created'} successfully`);
+
+      // Reset form and close modal
+      this.resetForm();
+      this.closeModal();
 
       // Trigger event to refresh fungi sample list
       window.dispatchEvent(new CustomEvent('fungi-sample-saved'));
@@ -247,6 +365,12 @@ const FungiSampleForm = {
     }
 
     return fungiSample;
+  },
+
+  // Save the original form data for dirty check
+  saveOriginalFormData: function () {
+    this.originalFormData = this.getFormData();
+    this.isFormDirty = false;
   },
 
   // Validate form data
@@ -282,9 +406,6 @@ const FungiSampleForm = {
     const errorElement = document.createElement('div');
     errorElement.className = 'error-message';
     errorElement.textContent = message;
-    errorElement.style.color = '#ea4335';
-    errorElement.style.fontSize = '0.875rem';
-    errorElement.style.marginTop = '0.25rem';
 
     // Insert error message after input
     inputElement.parentNode.insertBefore(errorElement, inputElement.nextSibling);
@@ -313,7 +434,7 @@ const FungiSampleForm = {
     if (!messageContainer) {
       messageContainer = document.createElement('div');
       messageContainer.id = 'form-message';
-      this.form.parentNode.insertBefore(messageContainer, this.form);
+      document.body.appendChild(messageContainer);
     }
 
     // Set message
@@ -332,6 +453,11 @@ const FungiSampleForm = {
     messageContainer.style.padding = '0.75rem';
     messageContainer.style.marginBottom = '1rem';
     messageContainer.style.borderRadius = '4px';
+    messageContainer.style.position = 'fixed';
+    messageContainer.style.top = '20px';
+    messageContainer.style.right = '20px';
+    messageContainer.style.zIndex = '2000';
+    messageContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
 
     // Clear message after delay
     setTimeout(() => {
@@ -359,12 +485,14 @@ const FungiSampleForm = {
 
       this.fungiIdInput.value = fungiSampleId;
 
-      // Scroll to form
-      this.form.scrollIntoView({ behavior: 'smooth' });
+      // Toggle exsiccata code field
+      this.toggleExsiccataCodeField();
 
-      // Focus first field
-      const firstField = Object.values(this.formFields)[0];
-      if (firstField) firstField.focus();
+      // Open modal
+      this.openModal();
+
+      // Save original form data
+      this.saveOriginalFormData();
 
     } catch (err) {
       console.error('Error loading fungi sample for edit', err);
@@ -383,12 +511,19 @@ const FungiSampleForm = {
     this.formTitle.textContent = 'Add New Fungi Sample';
     this.fungiIdInput.value = '';
 
+    // Reset exsiccata code visibility
+    this.exsiccataCodeRow.style.display = 'none';
+
     // Clear any error styling
     for (const field in this.formFields) {
       if (this.formFields[field]) {
         this.formFields[field].style.borderColor = '';
       }
     }
+
+    // Reset form dirty state
+    this.isFormDirty = false;
+    this.originalFormData = {};
   }
 };
 

@@ -139,76 +139,94 @@
   color: #f59e0b;
 }
 
-/* Person Form Component */
-#person-form-container {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-/* Person List Component */
-.person-card {
+/* Fungi Table Component */
+.fungi-table-controls {
   display: flex;
   justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.person-card:last-child {
-  border-bottom: none;
-}
-
-.person-info {
+.fungi-table-controls .search-container {
   flex: 1;
+  min-width: 200px;
 }
 
-.person-name {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-}
-
-.person-job {
-  color: #666;
-  font-size: 0.875rem;
-}
-
-.person-actions {
+.fungi-table-controls .button-group {
   display: flex;
   gap: 0.5rem;
+  margin-top: 0;
 }
 
-.edit-btn,
-.delete-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
+.fungi-table-container {
+  overflow-x: auto;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
 }
 
-/* Query Results Component */
-.results-table {
+.fungi-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 600px; /* Ensures table doesn't get too narrow */
 }
 
-.results-table th,
-.results-table td {
-  padding: 0.75rem;
+.fungi-table th,
+.fungi-table td {
+  padding: 0.75rem 1rem;
   text-align: left;
   border-bottom: 1px solid #eee;
 }
 
-.results-table th {
+.fungi-table th {
   background-color: #f9f9f9;
   font-weight: 500;
+  user-select: none;
+  position: sticky;
+  top: 0;
 }
 
-.results-table tr:hover {
+.fungi-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.fungi-table tbody tr:hover {
   background-color: #f5f5f5;
 }
 
-.results-empty {
-  text-align: center;
+.fungi-table tbody tr.selected {
+  background-color: #e8f0fe;
+}
+
+#no-records-message {
   padding: 2rem;
-  color: #666;
+  text-align: center;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .fungi-table-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .fungi-table-controls .button-group {
+    justify-content: flex-start;
+  }
+  
+  .hide-mobile {
+    display: none;
+  }
+  
+  .fungi-table th,
+  .fungi-table td {
+    padding: 0.5rem;
+  }
 }

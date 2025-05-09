@@ -54,20 +54,7 @@
       width: 100%;
       margin-bottom: 0.5rem;
     }
-    
-    /* Person List */
-    .person-card {
-      flex-direction: column;
-    }
-    
-    .person-info {
-      margin-bottom: 0.5rem;
-    }
-    
-    .person-actions {
-      justify-content: flex-start;
-    }
-    
+      
     /* Footer */
     .footer-content {
       flex-direction: column;
@@ -83,10 +70,6 @@
     }
     
     /* Layout adjustments for forms and lists */
-    #person-form-container,
-    .query-filters {
-      padding: 1.25rem;
-    }
   }
   
   /* Large screens (desktops) */
@@ -105,11 +88,7 @@
     h1 {
       grid-column: 1 / -1;
     }
-    
-    #person-form-container {
-      grid-column: 1;
-    }
-    
+  
     #fungi-list-container {
       grid-column: 2;
     }

@@ -59,7 +59,10 @@ const fungiSampleModel = {
         'exsiccataCode',
         'picture'
     ],
-
+    sampleTypes: [
+        'exsiccata',
+        'collected'
+    ],
 };
 
 window.fungiSampleModel = fungiSampleModel;

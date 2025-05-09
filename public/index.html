@@ -49,123 +49,394 @@
         <!-- App Container (shown after authentication) -->
         <div id="app-container" class="app-container hidden">
             <div class="container">
-                <h1>Manage fungi</h1>
-
-                <!-- Form for adding/editing fungi -->
-                <div id="fungi-sample-form-container">
-                    <h2 id="form-title">Add New Fungi Sample</h2>
-                    <form id="fungi-sample-form">
-                        <!-- Taxonomic Information -->
-                        <div class="form-group">
-                            <label for="taxonGenus">Genus*</label>
-                            <input type="text" id="taxonGenus" name="taxonGenus" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="taxonSpecies">Species*</label>
-                            <input type="text" id="taxonSpecies" name="taxonSpecies" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="authority">Authority</label>
-                            <input type="text" id="authority" name="authority">
-                        </div>
-
-                        <!-- Collection Information -->
-                        <div class="form-group">
-                            <label for="collectionDate">Collection Date*</label>
-                            <input type="date" id="collectionDate" name="collectionDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="collector">Collector*</label>
-                            <input type="text" id="collector" name="collector" required>
-                        </div>
-
-                        <!-- Locality Information -->
-                        <div class="form-group">
-                            <label for="locality">Locality*</label>
-                            <input type="text" id="locality" name="locality" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="localityPlace">Locality Place</label>
-                            <input type="text" id="localityPlace" name="localityPlace">
-                        </div>
-                        <div class="form-group">
-                            <label for="localityElevation">Elevation</label>
-                            <input type="text" id="localityElevation" name="localityElevation">
-                        </div>
-                        <div class="form-group">
-                            <label for="localityCoordinates">Coordinates</label>
-                            <input type="text" id="localityCoordinates" name="localityCoordinates"
-                                placeholder="e.g., 45.123, -122.456">
-                        </div>
-
-                        <!-- Habitat Information -->
-                        <div class="form-group">
-                            <label for="habitat">Habitat*</label>
-                            <input type="text" id="habitat" name="habitat" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="substrate">Substrate</label>
-                            <input type="text" id="substrate" name="substrate">
-                        </div>
-                        <div class="form-group">
-                            <label for="associatedTaxa">Associated Taxa</label>
-                            <input type="text" id="associatedTaxa" name="associatedTaxa">
-                        </div>
-
-                        <!-- Sample Information -->
-                        <div class="form-group">
-                            <label for="sampleType">Sample Type*</label>
-                            <input type="text" id="sampleType" name="sampleType" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="exsiccataCode">Exsiccata Code</label>
-                            <input type="text" id="exsiccataCode" name="exsiccataCode">
-                        </div>
-
-                        <!-- Determination Information -->
-                        <div class="form-group">
-                            <label for="determiner">Determiner</label>
-                            <input type="text" id="determiner" name="determiner">
-                        </div>
-                        <div class="form-group">
-                            <label for="determinationDate">Determination Date</label>
-                            <input type="date" id="determinationDate" name="determinationDate">
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="form-group">
-                            <label for="notes">Notes</label>
-                            <textarea id="notes" name="notes" rows="4"></textarea>
-                        </div>
-
-                        <!-- Picture -->
-                        <div class="form-group">
-                            <label for="picture">Picture URL</label>
-                            <input type="text" id="picture" name="picture">
-                        </div>
-
-                        <input type="hidden" id="fungi-id">
-                        <div class="button-group">
-                            <button type="submit" class="btn primary">Save</button>
-                            <button type="reset" class="btn secondary" id="cancel-edit">Cancel</button>
-                        </div>
-                    </form>
+                <div class="fungi-table-controls">
+                    <div class="search-container">
+                        <input type="text" id="search-fungi" placeholder="Search genus or species...">
+                    </div>
+                    <div class="button-group">
+                        <button id="new-fungi-btn" class="btn primary">
+                            <span class="icon">+</span> New Fungi Sample
+                        </button>
+                        <button id="edit-fungi-btn" class="btn secondary" disabled>
+                            <span class="icon">✏️</span> Edit
+                        </button>
+                        <button id="delete-fungi-btn" class="btn danger" disabled>
+                            <span class="icon">🗑️</span> Delete
+                        </button>
+                    </div>
                 </div>
 
-                <!-- List of fungi 
-                <div id="fungi-list-container">
-                    <h2>All fungi</h2>
-                    <div class="search-container">
-                        <input type="text" id="search-fungi" placeholder="Search fungi...">
-                    </div>
-                    <div id="fungi-list" class="list-container">
-                        -->
-                        <!-- Person entries will be dynamically added here -->
-                        <!--
-                        <div class="loader">Loading fungi...</div>
-                    </div>
+                <!--
+                <div class="sync-status">
+                    <span class="spinner"></span>
+                    <span class="status-text">Syncing...</span>
                 </div>
                 -->
+
+                <div class="fungi-table-container">
+                    <table class="fungi-table">
+                        <thead>
+                            <tr>
+                                <th>Genus</th>
+                                <th>Species</th>
+                                <th>Collection Date</th>
+                                <th>Locality</th>
+                                <th class="hide-mobile">Collector</th>
+                                <th class="hide-mobile">Habitat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fungi-table-body">
+                            <!-- Table rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="no-records-message" class="hidden">
+                    <p>No fungi samples found. Click "New Fungi Sample" to add one.</p>
+                </div>
+
+                <div id="loading-spinner" class="loader">
+                    <div class="spinner"></div>
+                    <p>Loading fungi samples...</p>
+                </div>
+
+                <!-- Form for adding/editing fungi -->
+                <!-- Modal Container -->
+                <div id="fungi-sample-modal" class="modal">
+                    <!-- Modal Content -->
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 id="form-title">Add New Fungi Sample</h2>
+                            <span class="close-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="fungi-sample-form">
+                                <!-- Taxonomic Information -->
+                                <div class="form-section">
+                                    <h3>Taxonomic Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="taxonGenus">Genus*</label>
+                                            <input type="text" id="taxonGenus" name="taxonGenus" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="taxonSpecies">Species*</label>
+                                            <input type="text" id="taxonSpecies" name="taxonSpecies" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="authority">Authority</label>
+                                            <input type="text" id="authority" name="authority">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Collection Information -->
+                                <div class="form-section">
+                                    <h3>Collection Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="collectionDate">Collection Date*</label>
+                                            <input type="date" id="collectionDate" name="collectionDate" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="collector">Collector*</label>
+                                            <input type="text" id="collector" name="collector" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Locality Information -->
+                                <div class="form-section">
+                                    <h3>Locality Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="locality">Locality*</label>
+                                            <input type="text" id="locality" name="locality" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="localityPlace">Locality Place</label>
+                                            <input type="text" id="localityPlace" name="localityPlace">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="localityElevation">Elevation</label>
+                                            <input type="text" id="localityElevation" name="localityElevation">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="localityCoordinates">Coordinates</label>
+                                            <input type="text" id="localityCoordinates" name="localityCoordinates"
+                                                placeholder="e.g., 45.123, -122.456">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Habitat Information -->
+                                <div class="form-section">
+                                    <h3>Habitat Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="habitat">Habitat*</label>
+                                            <input type="text" id="habitat" name="habitat" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="substrate">Substrate</label>
+                                            <input type="text" id="substrate" name="substrate">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="associatedTaxa">Associated Taxa</label>
+                                            <input type="text" id="associatedTaxa" name="associatedTaxa">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sample Information -->
+                                <div class="form-section">
+                                    <h3>Sample Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="sampleType">Sample Type*</label>
+                                            <select id="sampleType" name="sampleType" required>
+                                                <option value="">-- Select Sample Type --</option>
+                                                <!-- Sample types will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row" id="exsiccataCodeRow" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="exsiccataCode">Exsiccata Code</label>
+                                            <input type="text" id="exsiccataCode" name="exsiccataCode">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Determination Information -->
+                                <div class="form-section">
+                                    <h3>Determination Information</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="determiner">Determiner</label>
+                                            <input type="text" id="determiner" name="determiner">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="determinationDate">Determination Date</label>
+                                            <input type="date" id="determinationDate" name="determinationDate">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notes -->
+                                <div class="form-section">
+                                    <h3>Notes</h3>
+                                    <div class="form-row">
+                                        <div class="form-group full-width">
+                                            <label for="notes">Notes</label>
+                                            <textarea id="notes" name="notes" rows="4"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Picture -->
+                                <div class="form-section">
+                                    <h3>Media</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="picture">Picture URL</label>
+                                            <input type="text" id="picture" name="picture">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="fungi-id">
+                                <div class="button-group">
+                                    <button type="submit" class="btn primary">Save</button>
+                                    <button type="button" class="btn secondary" id="cancel-edit">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- CSS for the modal and responsive form -->
+                <style>
+                    /* Modal Styles */
+                    .modal {
+                        display: none;
+                        position: fixed;
+                        z-index: 1000;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: auto;
+                        background-color: rgba(0, 0, 0, 0.5);
+                    }
+
+                    .modal-content {
+                        background-color: #fefefe;
+                        margin: 5% auto;
+                        padding: 0;
+                        border: 1px solid #888;
+                        border-radius: 6px;
+                        width: 90%;
+                        max-width: 900px;
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .modal-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 1rem 1.5rem;
+                        background-color: #f8f9fa;
+                        border-bottom: 1px solid #dee2e6;
+                        border-top-left-radius: 6px;
+                        border-top-right-radius: 6px;
+                    }
+
+                    .modal-body {
+                        padding: 1.5rem;
+                    }
+
+                    .close-modal {
+                        color: #aaa;
+                        font-size: 28px;
+                        font-weight: bold;
+                        cursor: pointer;
+                    }
+
+                    .close-modal:hover,
+                    .close-modal:focus {
+                        color: #000;
+                        text-decoration: none;
+                    }
+
+                    /* Form Styles */
+                    .form-section {
+                        margin-bottom: 1.5rem;
+                        padding-bottom: 1rem;
+                        border-bottom: 1px solid #eee;
+                    }
+
+                    .form-section h3 {
+                        margin-top: 0;
+                        margin-bottom: 1rem;
+                        font-size: 1.2rem;
+                        color: #444;
+                    }
+
+                    .form-row {
+                        display: flex;
+                        flex-wrap: wrap;
+                        margin: 0 -0.5rem 1rem;
+                    }
+
+                    .form-group {
+                        flex: 1 1 300px;
+                        padding: 0 0.5rem;
+                        margin-bottom: 1rem;
+                    }
+
+                    .form-group.full-width {
+                        flex: 1 1 100%;
+                    }
+
+                    label {
+                        display: block;
+                        margin-bottom: 0.5rem;
+                        font-weight: 500;
+                    }
+
+                    input[type="text"],
+                    input[type="date"],
+                    textarea,
+                    select {
+                        width: 100%;
+                        padding: 0.5rem;
+                        border: 1px solid #ccc;
+                        border-radius: 4px;
+                        font-size: 1rem;
+                    }
+
+                    textarea {
+                        resize: vertical;
+                    }
+
+                    .error-message {
+                        color: #ea4335;
+                        font-size: 0.875rem;
+                        margin-top: 0.25rem;
+                    }
+
+                    /* Button Styles */
+                    .button-group {
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 10px;
+                        margin-top: 1rem;
+                    }
+
+                    .btn {
+                        padding: 0.5rem 1rem;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                    }
+
+                    .primary {
+                        background-color: #4285f4;
+                        color: white;
+                    }
+
+                    .secondary {
+                        background-color: #f1f3f4;
+                        color: #202124;
+                    }
+
+                    /* Autocomplete Styles */
+                    .autocomplete-container {
+                        border-radius: 0 0 4px 4px;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .autocomplete-item {
+                        padding: 8px 10px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                    }
+
+                    .autocomplete-item:hover,
+                    .autocomplete-item.active {
+                        background-color: #f0f0f0;
+                    }
+
+                    /* Responsive adjustments */
+                    @media (max-width: 768px) {
+                        .modal-content {
+                            margin: 0;
+                            width: 100%;
+                            height: 100%;
+                            max-height: 100%;
+                            border-radius: 0;
+                        }
+
+                        .form-group {
+                            flex: 1 1 100%;
+                        }
+                    }
+                </style>
             </div>
         </div>
 
@@ -189,6 +460,7 @@
     <script src="js/components/login.js"></script>
     <script src="js/services/pwa-registration.js"></script>
     <script src="js/services/fungiService.js"></script>
+    <script src="js/components/fungiTable.js"></script>
     <script src="js/components/fungiSampleForm.js"></script>
 </body>
 
