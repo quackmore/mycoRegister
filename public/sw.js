@@ -1,6 +1,6 @@
-// Service Worker for the Persons PWA
+// Service Worker for the fungiDB
 
-const CACHE_NAME = 'persons-pwa-v1';
+const CACHE_NAME = 'fungi-pwa-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -23,7 +23,6 @@ const ASSETS_TO_CACHE = [
   '/js/components/updateNotification.js',
   '/js/components/personForm.js',
   '/js/components/personList.js',
-  '/js/pages/persons.js',
   '/img/logo.png',
 //  '/img/icons/icon-192x192.png',
 //  '/img/icons/icon-512x512.png',

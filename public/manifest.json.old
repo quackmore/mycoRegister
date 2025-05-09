@@ -1,6 +1,6 @@
 {
-    "name": "Persons Database PWA",
-    "short_name": "Persons DB",
+    "name": "fungi Database PWA",
+    "short_name": "fungi DB",
     "description": "A Progressive Web App for managing person records with offline capabilities",
     "start_url": "/index.html",
     "display": "standalone",

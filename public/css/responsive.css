@@ -1,4 +1,4 @@
-/* Responsive styles for Persons PWA */
+/* Responsive styles for fungiDB */
 
 /* Small screens (mobile) */
 @media (max-width: 768px) {
@@ -95,7 +95,7 @@
       padding: 2rem;
     }
     
-    /* Two-column layout for managing persons page */
+    /* Two-column layout for managing fungi page */
     #app-content .container {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -110,7 +110,7 @@
       grid-column: 1;
     }
     
-    #persons-list-container {
+    #fungi-list-container {
       grid-column: 2;
     }
     

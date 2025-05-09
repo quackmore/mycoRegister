@@ -7,7 +7,7 @@ const QueriesService = {
     init: async function() {
       try {
         // Load initial data
-        await this.loadAllPersons();
+        await this.loadAllfungi();
         
         // Load job filter options
         await this.loadJobFilterOptions();
@@ -20,15 +20,15 @@ const QueriesService = {
       }
     },
     
-    // Load all persons from the database
-    loadAllPersons: async function() {
+    // Load all fungi from the database
+    loadAllfungi: async function() {
       try {
-        const persons = await DB.getAllByType('person').docs;
-        this.displayResults(persons);
-        return persons;
+        const fungi = await DB.getAllByType('person').docs;
+        this.displayResults(fungi);
+        return fungi;
       } catch (error) {
-        console.error('Error loading persons:', error);
-        this.showError('Failed to load persons data.');
+        console.error('Error loading fungi:', error);
+        this.showError('Failed to load fungi data.');
         return [];
       }
     },
@@ -36,12 +36,12 @@ const QueriesService = {
     // Load job options for the filter dropdown
     loadJobFilterOptions: async function() {
       try {
-        let persons = await DB.getAllByType('person');
-        persons = persons.docs;
+        let fungi = await DB.getAllByType('person');
+        fungi = fungi.docs;
         
         // Extract unique job titles
         const jobSet = new Set();
-        persons.forEach(person => {
+        fungi.forEach(person => {
           if (person.job) {
             jobSet.add(person.job);
           }
@@ -104,18 +104,18 @@ const QueriesService = {
         }
         
         // Execute query
-        let persons = await DB.find(query);
-        persons = persons.docs;
+        let fungi = await DB.find(query);
+        fungi = fungi.docs;
 
         // Filter by name if provided (client-side filtering for flexible name searching)
         if (nameSearch) {
-          persons = persons.filter(person => {
+          fungi = fungi.filter(person => {
             const fullName = `${person.name || ''} ${person.surname || ''}`.toLowerCase();
             return fullName.includes(nameSearch);
           });
         }
         
-        this.displayResults(persons);
+        this.displayResults(fungi);
       } catch (error) {
         console.error('Error applying filters:', error);
         this.showError('Failed to apply filters. Please try again.');
@@ -126,21 +126,21 @@ const QueriesService = {
     resetFilters: function() {
       document.getElementById('job-filter').value = '';
       document.getElementById('name-search').value = '';
-      this.loadAllPersons();
+      this.loadAllfungi();
     },
     
     // Display the query results in the results container
-    displayResults: function(persons) {
+    displayResults: function(fungi) {
       const resultsContainer = document.getElementById('results-container');
       
-      if (!persons || persons.length === 0) {
-        resultsContainer.innerHTML = '<div class="no-results">No persons found matching your criteria</div>';
+      if (!fungi || fungi.length === 0) {
+        resultsContainer.innerHTML = '<div class="no-results">No fungi found matching your criteria</div>';
         return;
       }
       
       let html = '<div class="results-list">';
-      console.log('Persons:', persons);
-      persons.forEach(person => {
+      console.log('fungi:', fungi);
+      fungi.forEach(person => {
         html += `
           <div class="person-card" data-id="${person._id}">
             <h3>${person.name || ''} ${person.surname || ''}</h3>
@@ -154,7 +154,7 @@ const QueriesService = {
       });
       
       html += '</div>';
-      html += `<div class="results-summary">${persons.length} person(s) found</div>`;
+      html += `<div class="results-summary">${fungi.length} person(s) found</div>`;
       
       resultsContainer.innerHTML = html;
     },

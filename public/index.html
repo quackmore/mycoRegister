@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Persons PWA</title>
+    <title>fungiDB</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
@@ -15,7 +15,7 @@
     <!-- Add to home screen for Safari on iOS -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Persons PWA">
+    <meta name="apple-mobile-web-app-title" content="fungiDB">
 </head>
 
 <body>
@@ -49,9 +49,9 @@
         <!-- App Container (shown after authentication) -->
         <div id="app-container" class="app-container hidden">
             <div class="container">
-                <h1>Manage Persons</h1>
+                <h1>Manage fungi</h1>
 
-                <!-- Form for adding/editing persons -->
+                <!-- Form for adding/editing fungi -->
                 <div id="person-form-container">
                     <h2 id="form-title">Add New Person</h2>
                     <form id="person-form">
@@ -75,15 +75,15 @@
                     </form>
                 </div>
 
-                <!-- List of persons -->
-                <div id="persons-list-container">
-                    <h2>All Persons</h2>
+                <!-- List of fungi -->
+                <div id="fungi-list-container">
+                    <h2>All fungi</h2>
                     <div class="search-container">
-                        <input type="text" id="search-persons" placeholder="Search persons...">
+                        <input type="text" id="search-fungi" placeholder="Search fungi...">
                     </div>
-                    <div id="persons-list" class="list-container">
+                    <div id="fungi-list" class="list-container">
                         <!-- Person entries will be dynamically added here -->
-                        <div class="loader">Loading persons...</div>
+                        <div class="loader">Loading fungi...</div>
                     </div>
                 </div>
             </div>

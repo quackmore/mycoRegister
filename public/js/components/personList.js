@@ -8,7 +8,7 @@ const PersonList = {
     // Initialize list
     init: function() {
       // Get list container
-      this.listContainer = document.getElementById('persons-list');
+      this.listContainer = document.getElementById('fungi-list');
       if (!this.listContainer) return;
       
       // Get search input

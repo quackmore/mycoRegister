@@ -12,7 +12,7 @@ const Footer = {
     footer.innerHTML = `
         <div class="footer-content">
           <div class="copyright">
-            <p>Made by <a href="https://github.com/quackmore">quackmore</a> with <a href="https://claude.ai">claude.ai</a></p>
+            <p>fungiDB - Made by <a href="https://github.com/quackmore">quackmore</a> with <a href="https://claude.ai">claude.ai</a></p>
           </div>
           <div class="connection-status">
             <span id="sync-status" class="sync-status">

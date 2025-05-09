@@ -1,4 +1,4 @@
-// Service for CRUD operations on persons
+// Service for CRUD operations on database instance
 // using window.db
 const PersonService = {
     // Create a new person
@@ -57,13 +57,13 @@ const PersonService = {
       }
     },
     
-    // Get all persons
+    // Get all fungi
     getAll: async function() {
       try {
         const result = await db.getAllByType('person');
         return result.docs;
       } catch (err) {
-        console.error('Error getting all persons', err);
+        console.error('Error getting all fungi', err);
         throw err;
       }
     },
@@ -79,7 +79,7 @@ const PersonService = {
       }
     },
     
-    // Search persons by name or surname
+    // Search fungi by name or surname
     search: async function(searchTerm) {
       try {
         const result = await db.find({
@@ -93,12 +93,12 @@ const PersonService = {
         });
         return result.docs;
       } catch (err) {
-        console.error('Error searching persons', err);
+        console.error('Error searching fungi', err);
         throw err;
       }
     },
     
-    // Filter persons by job
+    // Filter fungi by job
     filterByJob: async function(job) {
       try {
         const result = await db.find({
@@ -109,7 +109,7 @@ const PersonService = {
         });
         return result.docs;
       } catch (err) {
-        console.error('Error filtering persons by job', err);
+        console.error('Error filtering fungi by job', err);
         throw err;
       }
     },
@@ -117,8 +117,8 @@ const PersonService = {
     // Get all unique jobs
     getAllJobs: async function() {
       try {
-        const persons = await this.getAll();
-        const jobs = [...new Set(persons.map(person => person.job))];
+        const fungi = await this.getAll();
+        const jobs = [...new Set(fungi.map(person => person.job))];
         return jobs;
       } catch (err) {
         console.error('Error getting all jobs', err);

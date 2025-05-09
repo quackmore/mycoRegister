@@ -1,5 +1,5 @@
 {
-    "name": "my-pwa-app",
+    "name": "fungiDB",
     "version": "1.0.0",
     "description": "Progressive Web Application with authentication",
     "main": "server.js",
