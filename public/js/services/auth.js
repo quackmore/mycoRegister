@@ -175,19 +175,47 @@ class AuthService {
     _encryptAndStore(key, value) {
         if (!value) return;
 
-        // Simple XOR encryption with a dynamic key derived from the user's browser fingerprint
-        // Note: This is not cryptographically secure, just adds a layer of obscurity
+        // Simple XOR encryption with a dynamic key 
         const browserKey = this._getBrowserFingerprint();
-        const encrypted = this._xorEncrypt(value, browserKey);
-        localStorage.setItem(key, encrypted);
+
+        // Apply XOR
+        let result = '';
+        const keyChars = browserKey.toString();
+
+        for (let i = 0; i < value.length; i++) {
+            const keyChar = keyChars[i % keyChars.length].charCodeAt(0);
+            const charCode = value.charCodeAt(i) ^ keyChar;
+            result += String.fromCharCode(charCode);
+        }
+
+        // Convert to base64 for storage
+        localStorage.setItem(key, btoa(result));
     }
 
     _retrieveAndDecrypt(key) {
         const encrypted = localStorage.getItem(key);
         if (!encrypted) return null;
 
-        const browserKey = this._getBrowserFingerprint();
-        return this._xorEncrypt(encrypted, browserKey); // XOR is symmetric
+        try {
+            // First decode from base64
+            const encryptedBytes = atob(encrypted);
+            const browserKey = this._getBrowserFingerprint();
+
+            // Then apply XOR without calling btoa again
+            let result = '';
+            const keyChars = browserKey.toString();
+
+            for (let i = 0; i < encryptedBytes.length; i++) {
+                const keyChar = keyChars[i % keyChars.length].charCodeAt(0);
+                const charCode = encryptedBytes.charCodeAt(i) ^ keyChar;
+                result += String.fromCharCode(charCode);
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Decryption error:', error);
+            return null;
+        }
     }
 
     _getBrowserFingerprint() {
