@@ -63,6 +63,31 @@ const fungiSampleModel = {
         'exsiccata',
         'collected'
     ],
+    tableHeaders: [
+        { field: 'createdAt', label: 'Created At', sortable: true },
+        { field: 'createdBy', label: 'Created By', sortable: true },
+        { field: 'updatedAt', label: 'Updated At', sortable: true },
+        { field: 'updatedBy', label: 'Updated By', sortable: true },
+        { field: 'type', label: 'Type', sortable: true },
+        { field: 'taxonGenus', label: 'Genus', sortable: true },
+        { field: 'taxonSpecies', label: 'Species', sortable: true },
+        { field: 'authority', label: 'Authority', sortable: true },
+        { field: 'collectionDate', label: 'Collection Date', sortable: true },
+        { field: 'collector', label: 'Collector', sortable: true },
+        { field: 'locality', label: 'Locality', sortable: true },
+        { field: 'localityPlace', label: 'Locality Place', sortable: true },
+        { field: 'localityElevation', label: 'Elevation', sortable: true },
+        { field: 'localityCoordinates', label: 'Coordinates', sortable: true },
+        { field: 'habitat', label: 'Habitat', sortable: true },
+        { field: 'substrate', label: 'Substrate', sortable: true },
+        { field: 'associatedTaxa', label: 'Associated Taxa', sortable: true },
+        { field: 'notes', label: 'Notes', sortable: true },
+        { field: 'determiner', label: 'Determiner', sortable: true },
+        { field: 'determinationDate', label: 'Determination Date', sortable: true },
+        { field: 'sampleType', label: 'Sample Type', sortable: true },
+        { field: 'exsiccataCode', label: 'Exsiccata Code', sortable: true },
+        { field: 'picture', label: 'Picture', sortable: true }
+    ]
 };
 
 window.fungiSampleModel = fungiSampleModel;
