@@ -105,11 +105,12 @@
 }
 
 .fungi-table-container {
+  flex: 1 1 auto;
+  overflow-y: auto;
   overflow-x: auto;
   background-color: white;
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
 }
 
 .fungi-table {
@@ -145,6 +146,10 @@
 
 .fungi-table tbody tr.selected {
   background-color: #e8f0fe;
+}
+
+.fungi-table-buttons {
+  bottom: 0;
 }
 
 #no-records-message {

@@ -48,46 +48,6 @@
 
         <!-- App Container (shown after authentication) -->
         <div id="app-container" class="app-container hidden">
-            <div class="fungi-table-controls">
-                <div class="search-container">
-                    <input type="text" id="search-fungi" placeholder="Search genus or species...">
-                </div>
-                <div class="button-group">
-                    <button id="new-fungi-btn" class="btn primary">
-                        <span class="icon">+</span> New Fungi Sample
-                    </button>
-                    <button id="edit-fungi-btn" class="btn secondary" disabled>
-                        <span class="icon">✏️</span> Edit
-                    </button>
-                    <button id="delete-fungi-btn" class="btn danger" disabled>
-                        <span class="icon">🗑️</span> Delete
-                    </button>
-                </div>
-            </div>
-
-
-            <div class="fungi-table-container">
-                <table class="fungi-table">
-                    <thead>
-                        <tr>
-                            <th>Genus</th>
-                            <th>Species</th>
-                            <th>Collection Date</th>
-                            <th>Locality</th>
-                            <th class="hide-mobile">Collector</th>
-                            <th class="hide-mobile">Habitat</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fungi-table-body">
-                        <!-- Table rows will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="no-records-message" class="hidden">
-                <p>No fungi samples found. Click "New Fungi Sample" to add one.</p>
-            </div>
-
             <!-- Form for adding/editing fungi -->
             <!-- Modal Container -->
             <div id="fungi-sample-modal" class="modal">
@@ -251,6 +211,44 @@
                         </form>
                     </div>
                 </div>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="search-fungi" placeholder="Search genus or species...">
+            </div>
+
+            <div class="fungi-table-container">
+                <table class="fungi-table">
+                    <thead>
+                        <tr>
+                            <th>Genus</th>
+                            <th>Species</th>
+                            <th>Collection Date</th>
+                            <th>Locality</th>
+                            <th class="hide-mobile">Collector</th>
+                            <th class="hide-mobile">Habitat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fungi-table-body">
+                        <!-- Table rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="no-records-message" class="hidden">
+                <p>No fungi samples found. Click "New Fungi Sample" to add one.</p>
+            </div>
+
+            <div class="button-group fungi-table-buttons">
+                <button id="new-fungi-btn" class="btn primary">
+                    New Sample
+                </button>
+                <button id="edit-fungi-btn" class="btn primary" disabled>
+                    Edit
+                </button>
+                <button id="delete-fungi-btn" class="btn primary" disabled>
+                    Delete
+                </button>
             </div>
         </div>
 
