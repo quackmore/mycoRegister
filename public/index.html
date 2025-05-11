@@ -221,18 +221,16 @@
                 <table class="fungi-table">
                     <thead>
                         <tr>
-                            <th>Genus</th>
-                            <th>Species</th>
-                            <th>Collection Date</th>
-                            <th>Locality</th>
-                            <th class="hide-mobile">Collector</th>
-                            <th class="hide-mobile">Habitat</th>
+                            <!-- Table headers will be generated dynamically from visibleFields -->
                         </tr>
                     </thead>
                     <tbody id="fungi-table-body">
                         <!-- Table rows will be inserted here by JavaScript -->
                     </tbody>
                 </table>
+                <div id="no-records-message" class="hidden">
+                    No fungi samples found. Try a different search or add new samples.
+                </div>
             </div>
 
             <div id="no-records-message" class="hidden">

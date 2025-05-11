@@ -152,6 +152,44 @@
   bottom: 0;
 }
 
+.fungi-table th.sortable {
+  cursor: pointer;
+  position: relative;
+  padding-right: 20px;
+}
+
+.fungi-table th.sortable .sort-icon {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Gray out unsorted triangles */
+.fungi-table th.sortable .sort-icon.unsorted {
+  color: #ccc;
+}
+
+/* Active sort indicator */
+.fungi-table th.sorted .sort-icon {
+  color: #333;
+}
+
+/* Direction-specific styling */
+.fungi-table th.sorted.asc .sort-icon {
+  color: #0066cc;
+}
+
+.fungi-table th.sorted.desc .sort-icon {
+  color: #0066cc;
+}
+
+.fungi-table tr.selected {
+  background-color: #e0f7fa;
+}
+
 #no-records-message {
   padding: 2rem;
   text-align: center;
