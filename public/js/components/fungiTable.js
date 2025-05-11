@@ -9,8 +9,6 @@ class FungiTableComponent {
     this.editButton = document.getElementById('edit-fungi-btn');
     this.deleteButton = document.getElementById('delete-fungi-btn');
     this.noRecordsMessage = document.getElementById('no-records-message');
-    this.loadingSpinner = document.getElementById('loading-spinner');
-    // this.syncStatus = document.querySelector('.sync-status');
     
     // Component state
     this.fungiSamples = [];
@@ -115,12 +113,6 @@ class FungiTableComponent {
   
   setLoading(isLoading) {
     this.isLoading = isLoading;
-    
-    if (isLoading) {
-      this.loadingSpinner.classList.remove('hidden');
-    } else {
-      this.loadingSpinner.classList.add('hidden');
-    }
   }
   
   showError(message) {

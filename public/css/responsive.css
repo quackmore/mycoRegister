@@ -1,6 +1,14 @@
 /* Responsive styles for fungiDB */
-/* Responsive adjustments */
-@media (max-width: 768px) {}
+
+/* Hide header when viewport height is less than half the width */
+@media (max-height: calc(50vw)) {
+  .app-header {
+    opacity: 0;
+    pointer-events: none;
+    height: 0;
+    padding: 0;
+  }
+}
 
 /* Small screens (mobile) */
 @media (max-width: 768px) {
