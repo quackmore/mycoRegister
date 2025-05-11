@@ -76,9 +76,7 @@ self.addEventListener('fetch', e => {
   }
 
   // Special handling for authentication and API endpoints
-  if (e.request.url.includes('/api/auth/') || 
-      e.request.url.includes('/_session') || 
-      e.request.url.includes('/_users')) {
+  if (e.request.url.includes('/api/auth/') ) {
     
     // For auth requests, try the network first, fall back to offline handling
     e.respondWith(

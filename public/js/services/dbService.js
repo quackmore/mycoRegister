@@ -21,13 +21,13 @@ class DatabaseService extends EventTarget {
         this.setupConnectionListeners();
     }
 
-    setupAuthListeners() {
+    async setupAuthListeners() {
         // Initialize or reinitialize DB when auth state changes
-        authService.addEventListener('auth:authenticated', () => {
-            this.initializeRemoteDB();
+        authService.addEventListener('auth:authenticated', async () => {
+            await this.initializeRemoteDB();
             // Only start sync if online
             if (this.isOnline) {
-                this.startSync();
+                await this.startSync();
             }
         });
 
@@ -35,35 +35,35 @@ class DatabaseService extends EventTarget {
             this.stopSync();
         });
 
-        authService.addEventListener('auth:token-refreshed', (data) => {
+        authService.addEventListener('auth:token-refreshed', async (data) => {
             // When token is refreshed, we need to reinitialize the remote connection
-            this.initializeRemoteDB();
+            await this.initializeRemoteDB();
             // Restart sync with new credentials if it was active and we're online
             if (this.syncHandler && this.isOnline) {
                 this.stopSync();
-                this.startSync();
+                await this.startSync();
             }
         });
 
         // Initialize on startup if user is already authenticated
-        if (authService.isAuthenticated()) {
-            this.initializeRemoteDB();
+        if (await authService.isAuthenticated()) {
+            await this.initializeRemoteDB();
         }
     }
 
     setupConnectionListeners() {
         // Handle online state
-        connectionService.on('online', () => {
+        connectionService.on('online',async () => {
             console.log('Connection is now online');
             this.isOnline = true;
 
             // If authenticated, start sync when we go online
-            if (authService.isAuthenticated()) {
+            if (await authService.isAuthenticated()) {
                 // Initialize remote DB if needed
                 if (!this.remoteDB) {
-                    this.initializeRemoteDB();
+                    await this.initializeRemoteDB();
                 }
-                this.startSync();
+                await this.startSync();
             }
         });
 
@@ -95,9 +95,9 @@ class DatabaseService extends EventTarget {
         return this.localDB;
     }
 
-    initializeRemoteDB() {
+    async initializeRemoteDB() {
         // Get current auth token
-        const token = authService.getToken();
+        const token = await authService.getToken();
 
         if (!token) {
             console.error('Cannot initialize remote DB: No authentication token');
@@ -110,10 +110,10 @@ class DatabaseService extends EventTarget {
             fetch: (url, opts) => {
                 // Add authorization header to each request
                 if (opts.headers instanceof Headers) {
-                    opts.headers.set('Authorization', `Bearer ${authService.getToken()}`);
+                    opts.headers.set('Authorization', `Bearer ${token}`);
                 } else {
                     opts.headers = opts.headers || {};
-                    opts.headers['Authorization'] = `Bearer ${authService.getToken()}`;
+                    opts.headers['Authorization'] = `Bearer ${token}`;
                 }
                 return fetch(url, opts);
             }
@@ -166,7 +166,7 @@ class DatabaseService extends EventTarget {
         }
     }
 
-    startSync() {
+    async startSync() {
         // Don't start sync if offline
         if (!this.isOnline) {
             console.log('Cannot start sync: device is offline');
@@ -183,7 +183,7 @@ class DatabaseService extends EventTarget {
         this.initializeLocalDB();
 
         if (!this.remoteDB) {
-            this.initializeRemoteDB();
+            await this.initializeRemoteDB();
         }
 
         if (!this.localDB || !this.remoteDB) {
@@ -230,7 +230,7 @@ class DatabaseService extends EventTarget {
                 errorType: 'denied',
                 info
             });
-        }).on('error', err => {
+        }).on('error', async err => {
             console.error('PouchDB sync error:', err);
 
             // Set error state immediately (not debounced)
@@ -242,7 +242,7 @@ class DatabaseService extends EventTarget {
             // Check if error is related to authentication
             if (err.status === 401 || err.status === 403) {
                 // Try to refresh token
-                authService.refreshTokenSilently();
+                await authService.refreshTokenSilently();
             } else if (err.status === 0 || err.name === 'network_error') {
                 // Handle network errors specifically
                 console.log('Network error detected during sync');
@@ -287,8 +287,8 @@ class DatabaseService extends EventTarget {
         // Return local DB with sync capabilities if authenticated and online
         this.initializeLocalDB();
 
-        if (authService.isAuthenticated() && this.isOnline && !this.syncHandler) {
-            this.startSync();
+        if (await authService.isAuthenticated() && this.isOnline && !this.syncHandler) {
+            await this.startSync();
         }
 
         return this.localDB;
@@ -304,14 +304,14 @@ class DatabaseService extends EventTarget {
             return false;
         }
 
-        if (!authService.isAuthenticated()) {
+        if (!(await authService.isAuthenticated())) {
             console.log('Cannot force sync: not authenticated');
             return false;
         }
 
         // Stop any existing sync and restart
         this.stopSync();
-        this.startSync();
+        await this.startSync();
         return true;
     }
 }

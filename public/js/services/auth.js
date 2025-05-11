@@ -9,6 +9,10 @@ class AuthService {
         this.refreshTokenKey = 'app_refresh_token';
         this.tokenExpiryKey = 'app_token_expiry';
         this.eventListeners = {};
+        this.dbName = 'auth_storage_db';
+        this.storeName = 'auth_store';
+        this.dbPromise = null;
+        this.initPromise = null;
 
         // Auto-refresh token setup
         this.refreshTimeout = null;
@@ -17,27 +21,42 @@ class AuthService {
         // Event handling
         this.eventTarget = new EventTarget();
 
+        // Determine if running as installed PWA
+        this.isPwa = window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone ||
+            document.referrer.includes('android-app://');
+        // this.isPwa = true; // Force PWA mode for testing
         // Initialize
         this.init();
     }
 
-    init() {
-        // Check authentication status on load
-        this.checkTokenOnInit();
+    async init() {
+        if (!this.initPromise) {
+            this.initPromise = (async () => {
+                // Initialize storage first
+                if (this.isPwa) {
+                    await this._initIndexedDB();
+                }
 
-        // Set up event listeners for auth-related UI elements
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginForm = document.getElementById('login-form');
-            const logoutBtn = document.getElementById('logout-btn');
+                // Check authentication status on load
+                this.checkTokenOnInit();
 
-            if (loginForm) {
-                loginForm.addEventListener('submit', (e) => this.handleLogin(e));
-            }
+                // Set up event listeners for auth-related UI elements
+                document.addEventListener('DOMContentLoaded', () => {
+                    const loginForm = document.getElementById('login-form');
+                    const logoutBtn = document.getElementById('logout-btn');
 
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => this.handleLogout());
-            }
-        });
+                    if (loginForm) {
+                        loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+                    }
+
+                    if (logoutBtn) {
+                        logoutBtn.addEventListener('click', () => this.handleLogout());
+                    }
+                });
+            })();
+        }
+        return this.initPromise;
     }
 
     // Event subscription methods
@@ -55,27 +74,229 @@ class AuthService {
         this.eventTarget.dispatchEvent(event);
     }
 
+    /**
+     * IndexedDB initialization for PWA mode
+     */
+    async _initIndexedDB() {
+        if (!window.indexedDB) {
+            console.warn('IndexedDB not supported, falling back to sessionStorage');
+            this.isPwa = false;
+            return false;
+        }
+
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, 1);
+
+            request.onerror = (event) => {
+                console.error('IndexedDB error:', event.target.error);
+                this.isPwa = false;
+                resolve(false);
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    db.createObjectStore(this.storeName, { keyPath: 'key' });
+                }
+            };
+
+            request.onsuccess = (event) => {
+                this.dbPromise = Promise.resolve(event.target.result);
+                resolve(true);
+            };
+        });
+    }
+
+    /**
+     * IndexedDB operations
+     */
+    async _dbStore(key, value) {
+        if (!this.dbPromise) {
+            return false;
+        }
+
+        try {
+            const db = await this.dbPromise;
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([this.storeName], 'readwrite');
+                const store = transaction.objectStore(this.storeName);
+
+                // Encrypt the value first
+                const encryptedValue = this._encryptValue(value);
+
+                const request = store.put({ key, value: encryptedValue });
+
+                request.onsuccess = () => resolve(true);
+                request.onerror = (event) => {
+                    reject(event.target.error);
+                };
+            });
+        } catch (error) {
+            console.error('_dbStore error:', error);
+            return false;
+        }
+    }
+
+    async _dbRetrieve(key) {
+        if (!this.dbPromise) {
+            return null;
+        }
+
+        try {
+            const db = await this.dbPromise;
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([this.storeName], 'readonly');
+                const store = transaction.objectStore(this.storeName);
+                const request = store.get(key);
+
+                request.onsuccess = (event) => {
+                    const data = event.target.result;
+                    if (!data) {
+                        resolve(null);
+                        return;
+                    }
+
+                    // Decrypt the value
+                    try {
+                        const decryptedValue = this._decryptValue(data.value);
+                        resolve(decryptedValue);
+                    } catch (e) {
+                        console.error('Error decrypting IndexedDB value:', e);
+                        resolve(null);
+                    }
+                };
+
+                request.onerror = (event) => {
+                    console.error('Error retrieving from IndexedDB:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        } catch (error) {
+            console.error('_dbRetrieve error:', error);
+            return null;
+        }
+    }
+
+    async _dbRemove(key) {
+        if (!this.dbPromise) {
+            return false;
+        }
+
+        try {
+            const db = await this.dbPromise;
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([this.storeName], 'readwrite');
+                const store = transaction.objectStore(this.storeName);
+                const request = store.delete(key);
+
+                request.onsuccess = () => resolve(true);
+                request.onerror = (event) => {
+                    console.error('Error removing from IndexedDB:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        } catch (error) {
+            console.error('_dbRemove error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Encryption helpers for IndexedDB
+     */
+    _encryptValue(value) {
+        // Get browser fingerprint for encryption key
+        const browserKey = this._getBrowserFingerprint();
+
+        // Apply XOR
+        let result = '';
+        const keyChars = browserKey.toString();
+
+        for (let i = 0; i < value.length; i++) {
+            const keyChar = keyChars[i % keyChars.length].charCodeAt(0);
+            const charCode = value.charCodeAt(i) ^ keyChar;
+            result += String.fromCharCode(charCode);
+        }
+
+        // Convert to base64 for storage
+        return btoa(result);
+    }
+
+    _decryptValue(encrypted) {
+        if (!encrypted) return null;
+
+        try {
+            // First decode from base64
+            const encryptedBytes = atob(encrypted);
+            const browserKey = this._getBrowserFingerprint();
+
+            // Then apply XOR
+            let result = '';
+            const keyChars = browserKey.toString();
+
+            for (let i = 0; i < encryptedBytes.length; i++) {
+                const keyChar = keyChars[i % keyChars.length].charCodeAt(0);
+                const charCode = encryptedBytes.charCodeAt(i) ^ keyChar;
+                result += String.fromCharCode(charCode);
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Decryption error:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Unified storage operations - automatically uses appropriate storage mechanism
+     */
+    async _storeSecurely(key, value) {
+        if (this.isPwa && this.dbPromise) {
+            return await this._dbStore(key, value);
+        } else if (this._isSecureStorageAvailable()) {
+            sessionStorage.setItem(key, value);
+            return true;
+        } else {
+            // Fallback to encrypted localStorage
+            this._encryptAndStore(key, value);
+            return true;
+        }
+    }
+
+    async _retrieveSecurely(key) {
+        if (this.isPwa && this.dbPromise) {
+            return await this._dbRetrieve(key);
+        } else if (this._isSecureStorageAvailable()) {
+            return sessionStorage.getItem(key);
+        } else {
+            return this._retrieveAndDecrypt(key);
+        }
+    }
+
+    async _removeSecurely(key) {
+        if (this.isPwa && this.dbPromise) {
+            return await this._dbRemove(key);
+        } else if (this._isSecureStorageAvailable()) {
+            sessionStorage.removeItem(key);
+            return true;
+        } else {
+            localStorage.removeItem(key);
+            return true;
+        }
+    }
 
     /**
      * Token management - using secure storage when available
      */
-    storeTokens(token, refreshToken, expiresIn) {
+    async storeTokens(token, refreshToken, expiresIn) {
         // Calculate expiry time
         const expiryTime = Date.now() + (expiresIn * 1000);
 
         try {
-            // Try to use secure storage if available
-            if (this._isSecureStorageAvailable()) {
-                // Store in secure context
-                this._secureStore(this.tokenKey, token);
-                this._secureStore(this.refreshTokenKey, refreshToken);
-                this._secureStore(this.tokenExpiryKey, expiryTime.toString());
-            } else {
-                // Fallback to encrypted localStorage
-                this._encryptAndStore(this.tokenKey, token);
-                this._encryptAndStore(this.refreshTokenKey, refreshToken);
-                localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
-            }
+            // Store using the hybrid approach
+            await this._storeSecurely(this.tokenKey, token);
+            await this._storeSecurely(this.refreshTokenKey, refreshToken);
+            await this._storeSecurely(this.tokenExpiryKey, expiryTime.toString());
 
             // Setup auto refresh
             this.setupTokenRefresh(expiryTime);
@@ -87,40 +308,30 @@ class AuthService {
         }
     }
 
-    getToken() {
+    async getToken() {
+        if (this.initPromise) await this.initPromise;
         try {
-            if (this._isSecureStorageAvailable()) {
-                return this._secureRetrieve(this.tokenKey);
-            } else {
-                return this._retrieveAndDecrypt(this.tokenKey);
-            }
+            return await this._retrieveSecurely(this.tokenKey);
         } catch (error) {
             console.error('Failed to retrieve auth token:', error);
             return null;
         }
     }
 
-    getRefreshToken() {
+    async getRefreshToken() {
+        if (this.initPromise) await this.initPromise;
         try {
-            if (this._isSecureStorageAvailable()) {
-                return this._secureRetrieve(this.refreshTokenKey);
-            } else {
-                return this._retrieveAndDecrypt(this.refreshTokenKey);
-            }
+            return await this._retrieveSecurely(this.refreshTokenKey);
         } catch (error) {
             console.error('Failed to retrieve refresh token:', error);
             return null;
         }
     }
 
-    getTokenExpiry() {
+    async getTokenExpiry() {
+        if (this.initPromise) await this.initPromise;
         try {
-            let expiryStr;
-            if (this._isSecureStorageAvailable()) {
-                expiryStr = this._secureRetrieve(this.tokenExpiryKey);
-            } else {
-                expiryStr = localStorage.getItem(this.tokenExpiryKey);
-            }
+            const expiryStr = await this._retrieveSecurely(this.tokenExpiryKey);
             return expiryStr ? parseInt(expiryStr) : null;
         } catch (error) {
             console.error('Failed to retrieve token expiry:', error);
@@ -128,17 +339,12 @@ class AuthService {
         }
     }
 
-    clearTokens() {
+    async clearTokens() {
+        if (this.initPromise) await this.initPromise;
         try {
-            if (this._isSecureStorageAvailable()) {
-                sessionStorage.removeItem(this.tokenKey);
-                sessionStorage.removeItem(this.refreshTokenKey);
-                sessionStorage.removeItem(this.tokenExpiryKey);
-            } else {
-                localStorage.removeItem(this.tokenKey);
-                localStorage.removeItem(this.refreshTokenKey);
-                localStorage.removeItem(this.tokenExpiryKey);
-            }
+            await this._removeSecurely(this.tokenKey);
+            await this._removeSecurely(this.refreshTokenKey);
+            await this._removeSecurely(this.tokenExpiryKey);
 
             // Clear refresh interval
             if (this.refreshTimeout) {
@@ -159,16 +365,6 @@ class AuthService {
     _isSecureStorageAvailable() {
         // Modern browsers with secure context
         return window.isSecureContext;
-    }
-
-    _secureStore(key, value) {
-        // In secure context, sessionStorage is preferred over localStorage
-        // as it's cleared when the session ends
-        sessionStorage.setItem(key, value);
-    }
-
-    _secureRetrieve(key) {
-        return sessionStorage.getItem(key);
     }
 
     // Simple encryption for localStorage (not truly secure but better than plaintext)
@@ -255,9 +451,10 @@ class AuthService {
     /**
      * Authentication state checking
      */
-    isAuthenticated() {
-        const token = this.getToken();
-        const expiry = this.getTokenExpiry();
+    async isAuthenticated() {
+        if (this.initPromise) await this.initPromise;
+        const token = await this.getToken();
+        const expiry = await this.getTokenExpiry();
 
         // Check if we have both token and expiry time
         if (!token || !expiry) {
@@ -267,29 +464,29 @@ class AuthService {
         // Check if token is expired
         if (Date.now() >= expiry) {
             // Token expired, try to refresh
-            this.refreshTokenSilently();
+            await this.refreshTokenSilently();
             return false;
         }
 
         return true;
     }
 
-    checkTokenOnInit() {
+    async checkTokenOnInit() {
         // Check if we have a valid token on initialization
-        if (this.isAuthenticated()) {
+        if (await this.isAuthenticated()) {
             this.dispatchEvent('auth:authenticated');
 
             // Setup token refresh if needed
-            const expiry = this.getTokenExpiry();
+            const expiry = await this.getTokenExpiry();
             if (expiry) {
                 this.setupTokenRefresh(expiry);
             }
         } else {
             // We either have no token or it's expired
-            const refreshToken = this.getRefreshToken();
+            const refreshToken = await this.getRefreshToken();
             if (refreshToken) {
                 // Try to refresh the token
-                this.refreshTokenSilently();
+                await this.refreshTokenSilently();
             } else {
                 this.dispatchEvent('auth:unauthenticated');
             }
@@ -311,19 +508,20 @@ class AuthService {
 
         if (timeUntilRefresh <= 0) {
             // Already past or very close to threshold, refresh now
-            this.refreshTokenSilently();
+            this.refreshTokenSilently().catch(console.error);;
             return;
         }
 
         // Set timeout to refresh just before expiry
         this.refreshTimeout = setTimeout(() => {
-            this.refreshTokenSilently();
+            this.refreshTokenSilently().catch(console.error);;
         }, timeUntilRefresh);
     }
 
     async refreshTokenSilently() {
+        if (this.initPromise) await this.initPromise;
         try {
-            const refreshToken = this.getRefreshToken();
+            const refreshToken = await this.getRefreshToken();
             if (!refreshToken) {
                 throw new Error('No refresh token available');
             }
@@ -350,7 +548,7 @@ class AuthService {
             const { token, expiresIn } = responseData.data;
 
             // Store new tokens
-            this.storeTokens(token, refreshToken, expiresIn);
+            await this.storeTokens(token, refreshToken, expiresIn);
 
             // Notify that we've successfully refreshed
             this.dispatchEvent('auth:token-refreshed', {
@@ -366,7 +564,7 @@ class AuthService {
             console.error('Silent token refresh failed:', error);
 
             // Clear tokens as they're now invalid
-            this.clearTokens();
+            await this.clearTokens();
 
             // Notify system we're no longer authenticated
             this.dispatchEvent('auth:unauthenticated');
@@ -377,6 +575,7 @@ class AuthService {
 
     // Handle login form submission
     async handleLogin(event) {
+        if (this.initPromise) await this.initPromise;
         event.preventDefault();
 
         const loginForm = event.target;
@@ -413,7 +612,7 @@ class AuthService {
                 const userData = responseData.data.user;
 
                 // Store the tokens
-                this.storeTokens(token, refreshToken, expiresIn);
+                await this.storeTokens(token, refreshToken, expiresIn);
 
                 // Store credentials for offline authentication
                 // Don't store the actual password but a hash of it
@@ -462,9 +661,10 @@ class AuthService {
 
     // Handle logout
     async handleLogout() {
+        if (this.initPromise) await this.initPromise;
         try {
             // Get current token for authorization header
-            const token = this.getToken();
+            const token = await this.getToken();
 
             if (token) {
                 // Call logout API to invalidate the token on server
@@ -478,7 +678,7 @@ class AuthService {
             }
 
             // Clear tokens regardless of API call success
-            this.clearTokens();
+            await this.clearTokens();
 
             // Dispatch logout event
             this.dispatchEvent('auth:logout');
@@ -493,7 +693,7 @@ class AuthService {
 
             // If offline, still clear local auth state
             if (!connectionService.online()) {
-                this.clearTokens();
+                await this.clearTokens();
                 this.dispatchEvent('auth:logout');
                 return true;
             }
@@ -517,16 +717,11 @@ class AuthService {
      * @returns {Promise<boolean>} - Whether authentication was successful
      */
     async handleOfflineAuthentication(username, password) {
+        if (this.initPromise) await this.initPromise;
         try {
             // Check if we have stored offline credentials
             const storedCredentialsKey = 'app_offline_creds';
-            let storedCredentials;
-
-            if (this._isSecureStorageAvailable()) {
-                storedCredentials = this._secureRetrieve(storedCredentialsKey);
-            } else {
-                storedCredentials = this._retrieveAndDecrypt(storedCredentialsKey);
-            }
+            let storedCredentials = await this._retrieveSecurely(storedCredentialsKey);
 
             if (!storedCredentials) {
                 console.warn('No stored offline credentials found');
@@ -555,7 +750,7 @@ class AuthService {
                 const offlineExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
 
                 // Store offline token
-                this.storeTokens(offlineToken, null, 86400); // 24 hours in seconds
+                await this.storeTokens(offlineToken, null, 86400); // 24 hours in seconds
 
                 // Store user data in local storage
                 if (userData) {
@@ -593,18 +788,11 @@ class AuthService {
 
             // Get existing credentials if any
             const storedCredentialsKey = 'app_offline_creds';
+            let storedCredentials = await this._retrieveSecurely(storedCredentialsKey);
             let existingCredentials = {};
 
-            if (this._isSecureStorageAvailable()) {
-                const stored = this._secureRetrieve(storedCredentialsKey);
-                if (stored) {
-                    existingCredentials = JSON.parse(stored);
-                }
-            } else {
-                const stored = this._retrieveAndDecrypt(storedCredentialsKey);
-                if (stored) {
-                    existingCredentials = JSON.parse(stored);
-                }
+            if (storedCredentials) {
+                existingCredentials = JSON.parse(storedCredentials);
             }
 
             // Add/update credentials for this username
@@ -617,12 +805,7 @@ class AuthService {
 
             // Store updated credentials
             const credentialsString = JSON.stringify(existingCredentials);
-
-            if (this._isSecureStorageAvailable()) {
-                this._secureStore(storedCredentialsKey, credentialsString);
-            } else {
-                this._encryptAndStore(storedCredentialsKey, credentialsString);
-            }
+            await this._storeSecurely(storedCredentialsKey, credentialsString);
 
             return true;
         } catch (error) {
@@ -720,13 +903,7 @@ class AuthService {
 
             // Get stored credentials
             const storedCredentialsKey = 'app_offline_creds';
-            let storedCredentials;
-
-            if (this._isSecureStorageAvailable()) {
-                storedCredentials = this._secureRetrieve(storedCredentialsKey);
-            } else {
-                storedCredentials = this._retrieveAndDecrypt(storedCredentialsKey);
-            }
+            let storedCredentials = await this._retrieveSecurely(storedCredentialsKey);
 
             if (!storedCredentials) {
                 return false;
@@ -753,7 +930,7 @@ class AuthService {
 
     async getCurrentUser() {
         try {
-            const token = this.getToken();
+            const token = await this.getToken();
 
             if (!token) {
                 throw new Error('Not authenticated');
@@ -777,7 +954,7 @@ class AuthService {
             // If unauthorized, clear tokens and update state
             if (error.message === 'Not authenticated' ||
                 error.message === 'Failed to get user data') {
-                this.clearTokens();
+                await this.clearTokens();
                 this.dispatchEvent('auth:unauthenticated');
             }
 
@@ -788,16 +965,16 @@ class AuthService {
     /**
      * Helper to get auth header for external API calls
      */
-    getAuthHeader() {
-        const token = this.getToken();
+    async getAuthHeader() {
+        const token = await this.getToken();
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
     /**
      * For PouchDB/CouchDB integration
      */
-    getPouchDbAuthHeaders() {
-        const token = this.getToken();
+    async getPouchDbAuthHeaders() {
+        const token = await this.getToken();
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 }
