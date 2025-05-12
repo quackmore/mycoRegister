@@ -12,7 +12,7 @@ const Header = {
       <div class="header-content">
         <div class="logo-container">
           <a href="index.html">
-            <img src="img/logo.png" alt="fungiDB Logo" class="logo">
+            <img src="img/logo.png" alt="mycoRegister Logo" class="logo">
           </a>
         </div>
         <div class="title-container">

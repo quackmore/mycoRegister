@@ -1,4 +1,4 @@
-// Service Worker for the fungiDB
+// Service Worker for the mycoRegister
 
 const CACHE_NAME = 'fungi-pwa-v1';
 const ASSETS_TO_CACHE = [

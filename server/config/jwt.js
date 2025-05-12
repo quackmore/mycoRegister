@@ -13,7 +13,7 @@ const config = {
     refreshExpiresIn: Number(process.env.JWT_REFRESH_EXPIRES_IN || 86400),
 
     // Issuer for the JWT
-    issuer: process.env.JWT_ISSUER || 'fungiDB'
+    issuer: process.env.JWT_ISSUER || 'mycoRegister'
 };
 
 module.exports = config;
