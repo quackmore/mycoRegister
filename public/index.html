@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mycoRegister</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="icon" href="img/icons/favicon.ico">
+    <!-- Add theme color for browser UI -->
+    <meta name="theme-color" content="#4285f4">
+    <!-- Add to home screen for Safari on iOS -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="mycoRegister">
+</head>
+
+<body>
+    <!-- Header component will be inserted here -->
+    <div id="header-container"></div>
+
+    <!-- Main content area -->
+    <main id="app-content">
+        <!-- Login / Register Form -->
+        <div id="auth-container" class="auth-container hidden">
+            <div class="auth-form-toggle">
+                <button id="auth-toggle-login" class="auth-toggle-btn active">Accesso</button>
+                <button id="auth-toggle-register" class="auth-toggle-btn">Registrazione</button>
+            </div>
+
+            <div class="auth-form-container">
+                <div id="auth-success-message" class="auth-success-message"></div>
+                <div id="auth-error-message" class="auth-error-message"></div>
+
+                <!-- Login Form -->
+                <form id="auth-login-form" class="auth-form active">
+                    <div class="auth-form-group">
+                        <label for="auth-login-username">Email o nome utente</label>
+                        <input type="text" id="auth-login-username" name="authEmail" required>
+                    </div>
+
+                    <div class="auth-form-group">
+                        <label for="auth-login-password">Password</label>
+                        <div class="auth-password-field">
+                            <input type="password" id="auth-login-password" name="authPassword" required>
+                            <button type="button" id="toggle-login-password" class="auth-password-toggle">
+                                Mostra
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="auth-checkbox-group">
+                        <input type="checkbox" id="auth-remember-me" name="authRemember" checked>
+                        <label for="auth-remember-me">Ricordami</label>
+                    </div>
+
+                    <button type="submit" class="auth-submit-btn">Accedi</button>
+
+                    <div class="auth-form-footer">
+                        <a href="#" id="auth-forgot-password" class="auth-forgot-password">Dimenticato la password?</a>
+                    </div>
+                </form>
+
+                <!-- Register Form -->
+                <form id="auth-register-form" class="auth-form" autocomplete="off">
+                    <div class=" auth-form-group">
+                        <label for="auth-register-name">Nome utente</label>
+                        <input type="text" id="auth-register-name" name="authName" required autocomplete="off">
+                    </div>
+
+                    <div class="auth-form-group">
+                        <label for="auth-register-email">Indirizzo email</label>
+                        <input type="email" id="auth-register-email" name="authEmail" required autocomplete="off">
+                    </div>
+
+                    <div class="auth-form-group">
+                        <label for="auth-register-password">Password</label>
+                        <div class="auth-password-field">
+                            <input type="password" id="auth-register-password" name="authPassword" required
+                                minlength="8" autocomplete="new-password">
+                            <button type="button" id="toggle-register-password" class="auth-password-toggle">
+                                Mostra
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="auth-form-group">
+                        <label for="auth-confirm-password">Conferma Password</label>
+                        <div class="auth-password-field">
+                            <input type="password" id="auth-confirm-password" name="authConfirmPassword" required
+                                minlength="8">
+                            <button type="button" id="toggle-confirm-password" class="auth-password-toggle">
+                                Mostra
+                            </button>
+                        </div>
+                    </div>
+                    <!--
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="terms" name="terms" required>
+                        <label for="terms">I agree to the Terms of Service and Privacy Policy</label>
+                    </div>
+                    -->
+                    <button type="submit" class="auth-submit-btn">Crea account</button>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- App Container (shown after authentication) -->
+        <div id="app-container" class="app-container hidden">
+            <!-- Form for adding/editing fungi -->
+            <!-- Modal Container -->
+            <div id="fungi-sample-modal" class="modal">
+                <!-- Modal Content -->
+                <div class="large-form-modal-content">
+                    <div class="modal-header">
+                        <h2 id="form-title">Aggiungi un nuovo campione</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="fungi-sample-form">
+                            <!-- Taxonomic Information -->
+                            <div class="form-section">
+                                <h3>Informazioni tassonomiche</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="taxonGenus">Genere*</label>
+                                        <input type="text" id="taxonGenus" name="taxonGenus" class="italic" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="taxonSpecies">Specie*</label>
+                                        <input type="text" id="taxonSpecies" name="taxonSpecies" class="italic"
+                                            required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="authority">Autore/i</label>
+                                        <input type="text" id="authority" name="authority">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Collection Information -->
+                            <div class="form-section">
+                                <h3>Raccolta</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="collectionDate">Data raccolta*</label>
+                                        <input type="date" id="collectionDate" name="collectionDate" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="collector">Raccoglitore*</label>
+                                        <input type="text" id="collector" name="collector" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Locality Information -->
+                            <div class="form-section">
+                                <h3>Informazioni sulla Località</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="locality">Località*</label>
+                                        <input type="text" id="locality" name="locality" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="localityPlace">Dettagli Località</label>
+                                        <input type="text" id="localityPlace" name="localityPlace">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="localityElevation">Altezza</label>
+                                        <input type="text" id="localityElevation" name="localityElevation">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="localityCoordinates">Coordinate</label>
+                                        <input type="text" id="localityCoordinates" name="localityCoordinates"
+                                            placeholder="e.g., 45.123, -122.456">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Habitat Information -->
+                            <div class="form-section">
+                                <h3>Informazioni Habitat</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="habitat">Habitat*</label>
+                                        <input type="text" id="habitat" name="habitat" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="substrate">Substrato</label>
+                                        <input type="text" id="substrate" name="substrate">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="associatedTaxa">Taxa collegati</label>
+                                        <input type="text" id="associatedTaxa" name="associatedTaxa">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sample Information -->
+                            <div class="form-section">
+                                <h3>Informazioni campione</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="sampleType">Tipologia campione*</label>
+                                        <select id="sampleType" name="sampleType" required>
+                                            <option value="">-- Seleziona il tipo di campione --</option>
+                                            <!-- Sample types will be populated by JavaScript -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row" id="exsiccataCodeRow" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="exsiccataCode">Riferimento all'archivio Exsiccata</label>
+                                        <input type="text" id="exsiccataCode" name="exsiccataCode">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Determination Information -->
+                            <div class="form-section">
+                                <h3>Determinazione</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="determiner">Determinatore</label>
+                                        <input type="text" id="determiner" name="determiner">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="determinationDate">Data determinazione</label>
+                                        <input type="date" id="determinationDate" name="determinationDate">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="form-section">
+                                <h3>Note</h3>
+                                <div class="form-row">
+                                    <div class="form-group full-width">
+                                        <label for="notes">Note</label>
+                                        <textarea id="notes" name="notes" rows="4"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Picture -->
+                            <div class="form-section">
+                                <h3>Media</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="picture">Foto</label>
+                                        <input type="text" id="picture" name="picture">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="fungi-id">
+                            <div class="button-group">
+                                <button type="submit" class="btn primary">Salva</button>
+                                <button type="button" class="btn secondary" id="cancel-edit">Annulla</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="search-fungi" placeholder="Cerca per parola chiave...">
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <!-- Table headers will be generated dynamically from visibleFields -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Table rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+                <div id="no-records-message" class="hidden">
+                    Nessun campione trovato. Prova una diversa chiave di ricerca o aggiungi un nuovo campione.
+                </div>
+            </div>
+
+            <div id="no-records-message" class="hidden">
+                <p>Nessun campione trovato.</p>
+            </div>
+
+            <div class="button-group table-buttons">
+                <button id="new-fungi-btn" class="btn primary">
+                    Nuovo
+                </button>
+                <button id="edit-fungi-btn" class="btn primary" disabled>
+                    Vedi/Modifica
+                </button>
+                <button id="delete-fungi-btn" class="btn primary" disabled>
+                    Rimuovi
+                </button>
+            </div>
+        </div>
+
+        <!-- Admin Container (shown for admin operations) -->
+        <div id="admin-container" class="admin-container hidden">
+
+            <div class="search-container">
+                <input type="text" id="search-allowed" placeholder="Cerca per email o note...">
+            </div>
+
+            <div id="allowedEmailTable" class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <!-- Table headers will be generated dynamically from visibleFields -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+                <div id="allowed-email-message" class="hidden">
+                    Nessuna email autorizzata. Prova una ricerca differente o inserisci un nuovo campione.
+                </div>
+            </div>
+
+            <div class="button-group table-buttons">
+                <button id="home-btn" class="btn primary">
+                    Home
+                </button>
+                <button id="new-allowed-btn" class="btn primary">
+                    Nuovo
+                </button>
+                <button id="edit-allowed-btn" class="btn primary" disabled>
+                    Modifica
+                </button>
+                <button id="delete-allowed-btn" class="btn primary" disabled>
+                    Rimuovi
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer component will be inserted here -->
+    <div id="footer-container"></div>
+
+    <!-- Scripts -->
+    <!-- PouchDB -->
+    <script type="module" src="assets/pouchdb@8.0.1.min.js"></script>
+    <script type="module" src="assets/pouchdb@8.0.1.find.min.js"></script>
+    <script type="module" src="js/services/connection.js"></script>
+    <script type="module" src="js/components/header.js"></script>
+    <script type="module" src="js/components/footer.js"></script>
+    <script type="module" src="js/components/login.js"></script>
+    <script type="module" src="js/services/auth/index.js"></script>
+    <script type="module" src="js/models/fungiSample.js"></script>
+    <script type="module" src="js/services/dbService.js"></script>
+    <script type="module" src="js/services/dbCrud.js"></script>
+    <script type="module" src="js/services/pwa-registration.js"></script>
+    <script type="module" src="js/services/fungiService.js"></script>
+    <script type="module" src="js/components/fungiTable.js"></script>
+    <script type="module" src="js/components/fungiSampleForm.js"></script>
+</body>
+
+</html>
